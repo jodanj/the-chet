@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Chet</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>💀</text></svg>" id="favicon">
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;height:100vh;overflow:hidden;background:#36393f}
+body.light-theme{background:#fff}
+body.light-theme .sidebar,body.light-theme .sidebar.right,body.light-theme .main-content{background:#fff}
+body.light-theme .server-header,body.light-theme .user-area{background:#f2f3f5;border-bottom-color:#e3e5e8}
+body.light-theme .channel,body.light-theme .user-item,body.light-theme .voice-channel{color:#4f5660}
+body.light-theme .channel:hover,body.light-theme .user-item:hover,body.light-theme .voice-channel:hover{background:#e3e5e8;color:#060607}
+body.light-theme .channel.active,body.light-theme .voice-channel.active{background:#5865f2;color:#fff}
+body.light-theme .section-header{color:#4f5660}
+body.light-theme .chat-header{background:#fff;border-bottom-color:#e3e5e8;color:#060607}
+body.light-theme .messages{background:#fff}
+body.light-theme .message:hover{background:rgba(0,0,0,.05)}
+body.light-theme .msg-author.normal{color:#060607}
+body.light-theme .msg-text{color:#2e3338}
+body.light-theme .msg-time{color:#5c5e66}
+body.light-theme .input-area{background:#fff}
+body.light-theme .input-wrapper,body.light-theme .reply-bar{background:#ebedef}
+body.light-theme .msg-input{color:#2e3338}
+body.light-theme .msg-input::placeholder{color:#5c5e66}
+body.light-theme #adminPanel,body.light-theme #settingsPanel{background:#fff;border-color:#e3e5e8}
+body.light-theme .ap-header,body.light-theme .settings-header{background:#5865f2}
+body.light-theme .ap-content,body.light-theme .settings-content{background:#fff}
+body.light-theme .form-input,body.light-theme .form-select{background:#ebedef;border-color:#e3e5e8;color:#2e3338}
+body.light-theme .ap-user{background:#ebedef}
+body.light-theme .ap-user-name{color:#2e3338}
+body.light-theme .notif{background:#fff;border-color:#e3e5e8}
+body.light-theme .notif-title{color:#060607}
+body.light-theme .notif-body{color:#2e3338}
+body.light-theme .room-input{background:#ebedef;color:#2e3338}
+.container{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:240px;flex-shrink:0;background:#2f3136;display:flex;flex-direction:column}
+.sidebar.right{order:3;border-left:1px solid #202225;position:relative;transition:margin-right .3s}
+.sidebar.right.collapsed{margin-right:-240px}
+.right-toggle{position:absolute;left:-36px;top:50%;transform:translateY(-50%);background:#2f3136;border:1px solid #202225;border-right:none;padding:8px;border-radius:4px 0 0 4px;cursor:pointer;color:#96989d;transition:all .2s;user-select:none}
+.right-toggle:hover{color:#fff}
+.server-header{height:48px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #202225;color:#fff;font-weight:600;font-size:15px}
+.channels{flex:1;overflow-y:auto;padding:8px}
+.channel-section{margin-bottom:16px}
+.section-header{color:#96989d;font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:4px;padding:0 8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.channel{padding:8px 12px;margin:2px 0;border-radius:4px;color:#96989d;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:14px;transition:all .15s;position:relative}
+.channel:hover{background:#3a3c42;color:#dcddde}
+.channel.active{background:#404249;color:#fff}
+.channel.has-unread{font-weight:600}
+.channel-name{display:flex;align-items:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.channel-name::before{content:'#';margin-right:6px;font-weight:600;color:#72767d}
+.channel.private .channel-name::before{content:'@';color:#5865f2}
+.channel.room .channel-name::before{content:'🔑';font-size:11px;font-weight:400}
+.room-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.unread-badge{background:#ed4245;color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;font-weight:700;min-width:18px;text-align:center;display:none}
+.channel.has-unread .unread-badge{display:block}
+.dm-badge{position:absolute;right:28px;top:50%;transform:translateY(-50%);background:#ed4245;color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;font-weight:700;min-width:18px;text-align:center;display:block}
+.close-dm{opacity:0;background:none;border:none;color:#96989d;cursor:pointer;font-size:16px;transition:opacity .2s}
+.channel:hover .close-dm{opacity:1}
+.close-dm:hover{color:#ed4245}
+.room-form{display:flex;gap:4px;padding:0 4px;margin:6px 0}
+.room-input{flex:1;min-width:0;padding:7px 8px;border-radius:4px;border:none;background:#202225;color:#dcddde;font-size:12px}
+.room-input:focus{outline:none;box-shadow:0 0 0 2px #5865f2}
+.room-input::placeholder{color:#72767d}
+.room-btn{border:none;border-radius:4px;background:#5865f2;color:#fff;font-size:12px;font-weight:600;padding:0 10px;cursor:pointer;transition:background .2s;white-space:nowrap}
+.room-btn:hover{background:#4752c4}
+.room-btn.alt{background:#4f545c}
+.room-btn.alt:hover{background:#5d6269}
+.header-actions{display:flex;align-items:center;gap:10px}
+.header-actions .room-btn{padding:6px 10px}
+.room-count{font-size:12px;color:#96989d}
+.voice-section{margin-top:16px;padding-top:16px;border-top:1px solid #202225}
+.voice-channel{padding:8px 12px;margin:2px 0;border-radius:4px;color:#96989d;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:14px;transition:all .15s}
+.voice-channel:hover{background:#3a3c42;color:#dcddde}
+.voice-channel.active{background:#404249;color:#fff}
+.voice-channel-name{display:flex;align-items:center}
+.voice-status{font-size:11px;color:#3ba55d}
+.voice-controls{display:none;gap:4px;margin-top:8px;padding:0 12px}
+.voice-btn{flex:1;padding:6px;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;color:#fff}
+.voice-btn.leave{background:#ed4245}
+.voice-btn.leave:hover{background:#c93b3e}
+.voice-btn.mute{background:#5865f2}
+.voice-btn.mute:hover{background:#4752c4}
+.voice-btn.mute.active{background:#faa61a}
+.voice-participants{margin-top:8px;display:none}
+.voice-participants.show{display:block}
+.voice-participant{padding:4px 8px;font-size:12px;color:#dcddde;display:flex;align-items:center;gap:6px}
+.voice-participant::before{content:'👤';font-size:10px}
+.voice-participant.speaking::before{content:'🎤';animation:pulse 1s infinite}
+.voice-icon{width:18px;height:18px;margin-right:6px;fill:currentColor;flex-shrink:0;display:block}
+.users-section{flex:1;overflow-y:auto;padding:8px}
+.users-section-header{padding:8px 12px;color:#96989d;font-size:12px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.online-count{color:#3ba55d;font-size:11px}
+.role-header{font-size:11px;font-weight:600;text-transform:uppercase;padding:8px 12px 4px}
+.owner-header{color:#e74c3c}
+.admin-header{color:#faa61a}
+.vip-header{color:#f47fff}
+.guest-header{color:#96989d}
+.user-item{padding:6px 12px;color:#dcddde;font-size:13px;display:flex;align-items:center;justify-content:space-between;border-radius:4px;margin:0 4px;transition:background .15s;cursor:default}
+.user-item:hover{background:#3a3c42}
+.user-name{display:flex;align-items:center;gap:6px}
+.user-name::before{content:'●';color:#3ba55d;font-size:8px}
+.role-badge{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;color:#fff;margin-left:4px}
+.role-badge.owner{background:linear-gradient(135deg,#e74c3c,#c0392b)}
+.role-badge.admin{background:linear-gradient(135deg,#faa61a,#ff8c00)}
+.role-badge.vip{background:linear-gradient(135deg,#f47fff,#ff6ec7)}
+.dm-btn{opacity:0;background:#5865f2;color:#fff;border:none;padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer;transition:opacity .2s}
+.user-item:hover .dm-btn{opacity:1}
+.user-area{height:52px;background:#292b2f;padding:0 8px;display:flex;align-items:center;transition:background .2s;position:relative;gap:8px}
+.user-area:hover{background:#2a2d31}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;margin-right:8px;position:relative;flex-shrink:0}
+.notif-dot{position:absolute;top:-2px;right:-2px;width:12px;height:12px;background:#ed4245;border:2px solid #292b2f;border-radius:50%;animation:pulse 2s infinite;display:none}
+.notif-dot.show{display:block}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.avatar-badge{position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:7px;border:2px solid #292b2f;color:#fff}
+.avatar-badge.show{display:flex}
+.avatar-badge.owner{background:#e74c3c}
+.avatar-badge.admin{background:#faa61a}
+.avatar-badge.vip{background:#f47fff}
+.user-display-name{color:#fff;font-size:14px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.light-theme .user-display-name{color:#060607}
+.conn-status{width:8px;height:8px;border-radius:50%;background:#ed4245;transition:background .3s;flex-shrink:0}
+.conn-status.online{background:#3ba55d}
+.settings-btn{background:none;border:none;color:#96989d;cursor:pointer;font-size:20px;padding:4px;border-radius:4px;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.settings-btn:hover{background:#3a3c42;color:#fff}
+#settingsPanel{position:fixed;bottom:60px;left:8px;width:400px;max-width:calc(100vw - 16px);max-height:500px;background:#2f3136;border:1px solid #202225;border-radius:8px;display:none;flex-direction:column;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#settingsPanel.show{display:flex}
+.settings-header{padding:12px 16px;border-bottom:1px solid #202225;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.settings-title{color:#fff;font-weight:600;font-size:14px}
+.settings-close{background:none;border:none;color:#96989d;cursor:pointer;font-size:20px;transition:color .2s}
+.settings-close:hover{color:#fff}
+.settings-content{flex:1;overflow-y:auto;padding:12px;min-height:0}
+.settings-section{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #202225}
+.settings-section:last-child{border-bottom:none}
+.settings-section-title{color:#fff;font-size:13px;font-weight:600;margin-bottom:12px;text-transform:uppercase}
+.settings-option{display:flex;justify-content:space-between;align-items:center;padding:8px 0;gap:12px}
+.settings-option-label{color:#dcddde;font-size:13px}
+.settings-option-desc{color:#96989d;font-size:11px;margin-top:2px}
+.settings-toggle{width:40px;height:20px;background:#72767d;border-radius:10px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.settings-toggle.active{background:#3ba55d}
+.settings-toggle-slider{position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s}
+.settings-toggle.active .settings-toggle-slider{transform:translateX(20px)}
+.color-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.color-option{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;position:relative}
+.color-option:hover{transform:scale(1.1)}
+.color-option.selected{border-color:#5865f2}
+.color-option.selected::after{content:'✓';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-weight:700;font-size:18px}
+.color-default{background:linear-gradient(135deg,#667eea,#764ba2)}
+.color-red{background:linear-gradient(135deg,#ff6b6b,#ee5a6f)}
+.color-orange{background:linear-gradient(135deg,#ffa500,#ff8c00)}
+.color-yellow{background:linear-gradient(135deg,#ffd93d,#fcbf49)}
+.color-green{background:linear-gradient(135deg,#51cf66,#37b24d)}
+.color-blue{background:linear-gradient(135deg,#4dabf7,#3b5bdb)}
+.color-purple{background:linear-gradient(135deg,#9775fa,#7950f2)}
+.color-pink{background:linear-gradient(135deg,#ff6ec7,#f783ac)}
+.main-content{flex:1;min-width:0;display:flex;flex-direction:column;background:#36393f}
+.chat-header{height:48px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #202225;color:#fff}
+.current-channel{font-weight:600;font-size:16px}
+.current-channel::before{content:'#';margin-right:4px;color:#72767d}
+.current-channel.private::before{content:'@';color:#5865f2}
+.current-channel.room::before{content:'🔑';font-size:13px;margin-right:6px}
+.messages{flex:1;overflow-y:auto;padding:16px}
+.message{display:flex;padding:4px 0;margin-bottom:8px;position:relative;transition:background .15s}
+.message:hover{background:rgba(0,0,0,.1);margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;border-radius:4px}
+.msg-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;margin-right:12px;flex-shrink:0}
+.msg-avatar.color-red,.user-avatar.color-red{background:linear-gradient(135deg,#ff6b6b,#ee5a6f)}
+.msg-avatar.color-orange,.user-avatar.color-orange{background:linear-gradient(135deg,#ffa500,#ff8c00)}
+.msg-avatar.color-yellow,.user-avatar.color-yellow{background:linear-gradient(135deg,#ffd93d,#fcbf49)}
+.msg-avatar.color-green,.user-avatar.color-green{background:linear-gradient(135deg,#51cf66,#37b24d)}
+.msg-avatar.color-blue,.user-avatar.color-blue{background:linear-gradient(135deg,#4dabf7,#3b5bdb)}
+.msg-avatar.color-purple,.user-avatar.color-purple{background:linear-gradient(135deg,#9775fa,#7950f2)}
+.msg-avatar.color-pink,.user-avatar.color-pink{background:linear-gradient(135deg,#ff6ec7,#f783ac)}
+.msg-content{flex:1;min-width:0}
+.msg-header{display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap}
+.msg-author{font-weight:500;font-size:15px}
+.msg-author.owner{color:#e74c3c}
+.msg-author.admin{color:#faa61a}
+.msg-author.vip{color:#f47fff}
+.msg-author.normal{color:#fff}
+.msg-time{color:#72767d;font-size:12px}
+.msg-text{color:#dcddde;font-size:15px;line-height:1.4;word-wrap:break-word;white-space:pre-wrap}
+.message.grouped{margin-top:0;padding-top:0}
+.message.grouped .msg-avatar,.message.grouped .msg-header{display:none}
+.message.grouped .msg-content{margin-left:52px}
+.msg-image{max-width:400px;max-height:300px;border-radius:8px;margin-top:8px;cursor:pointer;transition:transform .2s}
+.msg-image:hover{transform:scale(1.02)}
+.msg-reply{background:#2f3136;border-left:3px solid #5865f2;padding:4px 8px;margin-bottom:4px;border-radius:0 4px 4px 0;font-size:13px;color:#96989d}
+.msg-reply-author{color:#5865f2;font-weight:500}
+.msg-actions{position:absolute;right:8px;top:-8px;background:#2f3136;border-radius:4px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.message:hover .msg-actions{display:flex}
+.msg-action{background:none;border:none;color:#96989d;padding:6px 8px;cursor:pointer;font-size:14px;transition:all .15s}
+.msg-action:hover{color:#fff;background:#3a3c42}
+.msg-action.danger:hover{color:#ed4245}
+.reactions{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.reaction{background:#3a3c42;border:1px solid transparent;border-radius:6px;padding:2px 6px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s}
+.reaction:hover{border-color:#5865f2;transform:scale(1.05)}
+.reaction.active{background:rgba(88,101,242,.3);border-color:#5865f2}
+.reaction-count{font-size:12px;color:#dcddde}
+.emoji-picker{position:absolute;bottom:100%;right:0;background:#2f3136;border-radius:8px;padding:8px;display:none;box-shadow:0 4px 12px rgba(0,0,0,.5);z-index:100;animation:fadeIn .2s}
+.emoji-picker.show{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.emoji-picker button{background:none;border:none;font-size:20px;cursor:pointer;padding:4px;border-radius:4px;transition:all .15s}
+.emoji-picker button:hover{background:#3a3c42;transform:scale(1.2)}
+.input-area{padding:0 16px 16px}
+.typing-indicator{height:24px;font-size:12px;color:#72767d;font-style:italic;display:flex;align-items:center}
+.reply-bar{background:#40444b;border-radius:8px 8px 0 0;padding:8px 12px;display:none;align-items:center;justify-content:space-between}
+.reply-bar.show{display:flex}
+.reply-bar-text{color:#dcddde;font-size:13px}
+.reply-bar-close{background:none;border:none;color:#96989d;cursor:pointer;font-size:18px;transition:color .2s}
+.reply-bar-close:hover{color:#fff}
+.input-wrapper{background:#40444b;border-radius:8px;padding:12px;display:flex;align-items:center;gap:8px}
+.reply-bar.show+.input-wrapper{border-radius:0 0 8px 8px}
+.msg-input{flex:1;background:none;border:none;color:#dcddde;font-size:15px;outline:none}
+.msg-input::placeholder{color:#72767d}
+.input-btn{background:none;border:none;color:#96989d;cursor:pointer;font-size:20px;padding:4px 8px;border-radius:4px;transition:all .2s}
+.input-btn:hover{background:#3a3c42;color:#fff}
+.input-btn:disabled{opacity:.5;cursor:not-allowed}
+.send-btn{background:#5865f2;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:500;transition:background .2s}
+.send-btn:hover{background:#4752c4}
+.send-btn:disabled{background:#4e5058;cursor:not-allowed}
+.image-input{display:none}
+.image-preview{position:relative;display:inline-block;margin-right:8px}
+.image-preview img{max-width:80px;max-height:80px;border-radius:4px}
+.image-preview-close{position:absolute;top:-6px;right:-6px;background:#ed4245;color:#fff;border:none;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+.notifs{position:fixed;top:16px;right:16px;z-index:3000;display:flex;flex-direction:column;gap:8px;max-width:380px;pointer-events:none}
+.notifs>*{pointer-events:all}
+.notif{background:#2f3136;border:1px solid #202225;border-radius:8px;padding:12px;box-shadow:0 4px 12px rgba(0,0,0,.4);animation:slideIn .3s}
+@keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.notif-title{color:#fff;font-weight:600;font-size:14px;margin-bottom:6px}
+.notif-body{color:#dcddde;font-size:13px;margin-bottom:8px;word-wrap:break-word}
+.notif-actions{display:flex;gap:8px}
+.notif-btn{flex:1;padding:8px;border:none;border-radius:4px;font-weight:500;cursor:pointer;font-size:13px;transition:all .2s}
+.notif-accept{background:#3ba55d;color:#fff}
+.notif-accept:hover{background:#2d8659}
+.notif-decline{background:#ed4245;color:#fff}
+.notif-decline:hover{background:#c93b3e}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:#2f3136}
+::-webkit-scrollbar-thumb{background:#202225;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#1a1c1f}
+#loginOverlay{position:fixed;inset:0;z-index:2000;background:linear-gradient(135deg,#1a1c20 0%,#2f3136 50%,#1a1c20 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px}
+.login-title{font-family:'Great Vibes',cursive;font-size:72px;color:#fff;margin-bottom:30px;text-shadow:0 0 20px rgba(88,101,242,.5),0 0 40px rgba(88,101,242,.3);animation:glow 2s ease-in-out infinite}
+@keyframes glow{0%,100%{text-shadow:0 0 20px rgba(88,101,242,.5),0 0 40px rgba(88,101,242,.3)}50%{text-shadow:0 0 30px rgba(88,101,242,.7),0 0 60px rgba(88,101,242,.5)}}
+#loginCard{width:320px;max-width:calc(100vw - 32px);background:#2f3136;border:1px solid #202225;border-radius:8px;padding:24px;color:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+#loginCard h2{margin-bottom:16px;font-size:20px}
+#usernameInput,#pwdInput{width:100%;padding:12px;border-radius:6px;border:none;background:#40444b;color:#fff;font-size:14px;transition:box-shadow .2s;margin-bottom:12px}
+#usernameInput:focus,#pwdInput:focus{outline:none;box-shadow:0 0 0 2px #5865f2}
+#loginBtn{width:100%;margin-top:0;padding:12px;border:none;border-radius:6px;background:#5865f2;color:#fff;cursor:pointer;font-weight:600;font-size:14px;transition:background .2s}
+#loginBtn:hover{background:#4752c4}
+#loginBtn:disabled{opacity:.6;cursor:wait}
+.guest-login{margin-top:16px;color:#5865f2;font-size:13px;cursor:pointer;transition:all .2s;text-decoration:underline;text-underline-offset:2px}
+.guest-login:hover{color:#7289da;transform:translateY(-1px)}
+#loginError{margin-top:10px;color:#ed4245;font-size:13px;min-height:20px}
+.empty{text-align:center;color:#72767d;padding:12px;font-size:12px}
+.modal-overlay{position:fixed;inset:0;z-index:1500;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+#rulesModal{z-index:2100}
+.modal{width:520px;max-width:92vw;max-height:80vh;background:#2f3136;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.modal-header{padding:16px;background:#5865f2;color:#fff;display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-size:18px;font-weight:700}
+.modal-close{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.modal-close:hover{background:rgba(255,255,255,.3)}
+.modal-body{padding:16px;overflow-y:auto;flex:1}
+.rules-intro{color:#96989d;font-size:13px;margin-bottom:12px}
+.rule{background:#40444b;border-left:3px solid #5865f2;padding:10px 12px;border-radius:6px;margin-bottom:8px;color:#dcddde;font-size:13px;line-height:1.4}
+.rule b{color:#fff}
+.rules-actions{display:flex;gap:8px;margin-top:12px}
+.rules-actions .btn{margin-top:0}
+.section{margin-bottom:16px}
+.section-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:8px}
+.help-command{background:#40444b;padding:10px;border-radius:6px;margin-bottom:8px;border-left:3px solid #5865f2}
+.help-command-name{color:#5865f2;font-weight:600;font-size:14px;margin-bottom:4px}
+.help-command-desc{color:#dcddde;font-size:12px}
+.form-group{margin-bottom:12px}
+.form-label{color:#96989d;font-size:11px;font-weight:600;margin-bottom:4px;display:block}
+.form-input,.form-select{width:100%;padding:10px;background:#40444b;border:1px solid #202225;border-radius:4px;color:#fff;font-size:13px;transition:border-color .2s}
+.form-input:focus,.form-select:focus{border-color:#5865f2;outline:none}
+.btn{width:100%;padding:10px;border:none;border-radius:4px;font-weight:600;cursor:pointer;font-size:13px;margin-top:8px;transition:all .2s}
+.btn-primary{background:#5865f2;color:#fff}
+.btn-primary:hover{background:#4752c4}
+.btn-success{background:#3ba55d;color:#fff}
+.btn-success:hover{background:#2d8659}
+.btn-danger{background:#ed4245;color:#fff}
+.btn-danger:hover{background:#c93b3e}
+#adminPanel{position:fixed;bottom:60px;left:8px;width:500px;max-width:calc(100vw - 16px);max-height:500px;background:#2f3136;border:1px solid #202225;border-radius:8px;display:none;flex-direction:column;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#adminPanel.show{display:flex}
+.ap-header{padding:12px 16px;border-bottom:1px solid #202225;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.ap-title{color:#fff;font-weight:600;font-size:14px}
+.ap-close{background:none;border:none;color:#96989d;cursor:pointer;font-size:20px;transition:color .2s}
+.ap-close:hover{color:#fff}
+.ap-tabs{display:flex;padding:8px;gap:6px;border-bottom:1px solid #202225;flex-wrap:wrap;flex-shrink:0;background:#26282d}
+.ap-tab{padding:8px 12px;background:none;border:none;color:#96989d;cursor:pointer;border-radius:4px;font-size:11px;font-weight:600;transition:all .15s}
+.ap-tab:hover{background:#3a3c42;color:#dcddde}
+.ap-tab.active{background:#5865f2;color:#fff}
+.ap-content{flex:1;overflow-y:auto;padding:12px;min-height:0}
+.ap-section{display:none}
+.ap-section.active{display:block}
+.ap-user{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#40444b;border-radius:6px;margin-bottom:6px;transition:background .15s}
+.ap-user:hover{background:#474b52}
+.ap-user-info{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.ap-user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;flex-shrink:0}
+.ap-user-name{color:#fff;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ap-user-actions{display:flex;gap:4px;flex-shrink:0}
+.ap-btn{padding:5px 9px;border:none;border-radius:3px;cursor:pointer;font-size:10px;font-weight:600;color:#fff;transition:opacity .2s}
+.ap-btn:hover{opacity:.8}
+.ap-btn-kick{background:#faa61a}
+.ap-btn-to{background:#f47b67}
+.ap-btn-mute{background:#9b59b6}
+.ap-btn-ban{background:#ed4245}
+.troll-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.troll-btn{padding:8px 5px;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;color:#fff;background:#5865f2;transition:all .2s}
+.troll-btn:hover{opacity:.9;transform:scale(1.02)}
+.troll-btn.warn{background:#faa61a}
+.troll-btn.danger{background:#ed4245}
+.troll-btn.success{background:#3ba55d}
+.owner-section{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #202225}
+.owner-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.ban-list{max-height:120px;overflow-y:auto;background:#40444b;border-radius:4px;padding:8px;margin-bottom:8px}
+.ban-item{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#2f3136;border-radius:3px;margin-bottom:4px;font-size:11px;color:#dcddde}
+.unban-btn{background:#3ba55d;color:#fff;border:none;padding:4px 8px;border-radius:3px;font-size:9px;cursor:pointer;transition:background .2s;font-weight:600}
+.unban-btn:hover{background:#2d8659}
+.ban-type-selector{display:flex;gap:6px;margin-top:8px}
+.ban-type-btn{flex:1;padding:6px;background:#40444b;border:2px solid transparent;border-radius:4px;color:#fff;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;text-align:center}
+.ban-type-btn:hover{border-color:#5865f2}
+.ban-type-btn.selected{border-color:#3ba55d;background:rgba(59,165,93,.2)}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+@keyframes rainbow{0%{filter:hue-rotate(0)}100%{filter:hue-rotate(360deg)}}
+.confetti{position:fixed;top:-10px;width:10px;height:10px;pointer-events:none;z-index:9999;animation:fall 3s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+.image-modal{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:2500;display:none;align-items:center;justify-content:center;cursor:pointer}
+.image-modal.show{display:flex}
+.image-modal img{max-width:90vw;max-height:90vh;border-radius:8px}
+</style>
+</head>
+<body>
+<!-- shared icons -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<defs>
+<symbol id="icon-speaker" viewBox="0 0 24 24">
+<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+</symbol>
+</defs>
+</svg>
+
+<div id="loginOverlay">
+<div class="login-title">The Chet</div>
+<div id="loginCard">
+<h2>Welcome to The Chet</h2>
+<input type="text" id="usernameInput" placeholder="Username" maxlength="30" autocomplete="username">
+<div id="adminField" style="display:none">
+<input type="password" id="pwdInput" placeholder="Admin / VIP password" autocomplete="current-password">
+</div>
+<button id="loginBtn">Join</button>
+<div class="guest-login" id="adminToggle">Admin login</div>
+<div id="loginError"></div>
+</div>
+</div>
+
+<div class="modal-overlay" id="rulesModal">
+<div class="modal">
+<div class="modal-header">
+<div class="modal-title">📜 Server Rules</div>
+</div>
+<div class="modal-body">
+<div class="rules-intro">Please read and agree to the rules before joining.</div>
+<div id="rulesList"></div>
+<div class="rules-actions">
+<button class="btn btn-danger" id="declineRules">Cancel</button>
+<button class="btn btn-success" id="acceptRules">I Agree &amp; Join</button>
+</div>
+</div>
+</div>
+</div>
+
+<div class="notifs" id="notifs"></div>
+<div id="remoteAudio" style="display:none"></div>
+
+<div class="modal-overlay" id="helpModal">
+<div class="modal">
+<div class="modal-header">
+<div class="modal-title">📋 Commands Help</div>
+<button class="modal-close" id="closeHelp">×</button>
+</div>
+<div class="modal-body" id="helpContent"></div>
+</div>
+</div>
+
+<div class="image-modal" id="imageModal">
+<img src="" alt="Full size image">
+</div>
+
+<div id="settingsPanel">
+<div class="settings-header">
+<div class="settings-title">⚙️ Settings</div>
+<button class="settings-close" id="closeSettings">×</button>
+</div>
+<div class="settings-content">
+<div class="settings-section">
+<div class="settings-section-title">Notifications</div>
+<div class="settings-option">
+<div>
+<div class="settings-option-label">Browser Notifications</div>
+<div class="settings-option-desc" id="notifPermStatus"></div>
+</div>
+<button class="notif-btn notif-accept" id="enableBrowserNotif" style="flex:none;padding:6px 12px">Enable</button>
+</div>
+<div class="settings-option">
+<div>
+<div class="settings-option-label">Off</div>
+<div class="settings-option-desc">Disable all message notifications</div>
+</div>
+<div class="settings-toggle" id="notifOffToggle">
+<div class="settings-toggle-slider"></div>
+</div>
+</div>
+<div class="settings-option">
+<div>
+<div class="settings-option-label">DM Notifications Only</div>
+<div class="settings-option-desc">Only notify for direct messages</div>
+</div>
+<div class="settings-toggle" id="notifDMToggle">
+<div class="settings-toggle-slider"></div>
+</div>
+</div>
+<div class="settings-option">
+<div>
+<div class="settings-option-label">All Notifications</div>
+<div class="settings-option-desc">Notify for all messages</div>
+</div>
+<div class="settings-toggle active" id="notifAllToggle">
+<div class="settings-toggle-slider"></div>
+</div>
+</div>
+</div>
+
+<div class="settings-section">
+<div class="settings-section-title">Profile Color</div>
+<div class="color-picker">
+<div class="color-option color-default selected" data-color="default"></div>
+<div class="color-option color-red" data-color="red"></div>
+<div class="color-option color-orange" data-color="orange"></div>
+<div class="color-option color-yellow" data-color="yellow"></div>
+<div class="color-option color-green" data-color="green"></div>
+<div class="color-option color-blue" data-color="blue"></div>
+<div class="color-option color-purple" data-color="purple"></div>
+<div class="color-option color-pink" data-color="pink"></div>
+</div>
+</div>
+
+<div class="settings-section">
+<div class="settings-section-title">Chat Features</div>
+<div class="settings-option">
+<div>
+<div class="settings-option-label">Profanity Filter</div>
+<div class="settings-option-desc">Replace bad words with asterisks</div>
+</div>
+<div class="settings-toggle" id="profanityToggle">
+<div class="settings-toggle-slider"></div>
+</div>
+</div>
+<div class="settings-option">
+<div>
+<div class="settings-option-label">Group Messages</div>
+<div class="settings-option-desc">Combine consecutive messages from same user</div>
+</div>
+<div class="settings-toggle" id="groupingToggle">
+<div class="settings-toggle-slider"></div>
+</div>
+</div>
+</div>
+
+<div class="settings-section">
+<div class="settings-section-title">Appearance</div>
+<div class="settings-option">
+<div>
+<div class="settings-option-label">Light Theme</div>
+<div class="settings-option-desc">Switch to light mode</div>
+</div>
+<div class="settings-toggle" id="themeToggle">
+<div class="settings-toggle-slider"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="adminPanel">
+<div class="ap-header">
+<div class="ap-title">⚡ Admin Panel</div>
+<button class="ap-close" id="closeAdmin">×</button>
+</div>
+<div class="ap-tabs">
+<button class="ap-tab active" data-tab="users">Users</button>
+<button class="ap-tab" data-tab="mod">Moderate</button>
+<button class="ap-tab" data-tab="troll">Effects</button>
+<button class="ap-tab" data-tab="bans">Bans</button>
+<button class="ap-tab" data-tab="settings">Settings</button>
+<button class="ap-tab" data-tab="owner" id="ownerTab" style="display:none">👑 Owner</button>
+</div>
+<div class="ap-content">
+<div class="ap-section active" data-section="users" id="apUsers"></div>
+<div class="ap-section" data-section="mod">
+<div class="form-group">
+<label class="form-label">Target User</label>
+<select class="form-select" id="modUser"></select>
+</div>
+<div class="form-group">
+<label class="form-label">Action Type</label>
+<select class="form-select" id="modAction">
+<option value="kick">Kick User</option>
+<option value="timeout">Timeout</option>
+<option value="mute">Mute</option>
+<option value="ban">Ban</option>
+<option value="warning">Send Warning</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label">Duration (seconds, for timeout / mute)</label>
+<input type="number" class="form-input" id="modDur" value="60" min="1">
+</div>
+<div class="form-group">
+<label class="form-label">Reason (optional)</label>
+<input type="text" class="form-input" id="modReason" placeholder="Violation reason..." maxlength="200">
+</div>
+<div class="ban-type-selector" id="banTypeSelector" style="display:none">
+<button class="ban-type-btn" data-type="username">Username Only</button>
+<button class="ban-type-btn selected" data-type="ip">IP Only</button>
+<button class="ban-type-btn" data-type="both">Both</button>
+</div>
+<button class="btn btn-primary" id="execMod">Execute Action</button>
+</div>
+<div class="ap-section" data-section="troll">
+<div class="form-group">
+<label class="form-label">Target User</label>
+<select class="form-select" id="trollUser"></select>
+</div>
+<div class="troll-grid">
+<button class="troll-btn warn" data-troll="spinScreen">🌀 Spin</button>
+<button class="troll-btn warn" data-troll="shakeScreen">📳 Shake</button>
+<button class="troll-btn warn" data-troll="flipScreen">🙃 Flip</button>
+<button class="troll-btn warn" data-troll="invertColors">🎨 Invert</button>
+<button class="troll-btn" data-troll="emojiSpam">😂 Emoji</button>
+<button class="troll-btn" data-troll="rainbow">🌈 Rainbow</button>
+<button class="troll-btn" data-troll="blur">👓 Blur</button>
+<button class="troll-btn" data-troll="matrix">💚 Matrix</button>
+<button class="troll-btn success" data-troll="confetti">🎉 Confetti</button>
+<button class="troll-btn danger" data-troll="rickRoll">🎵 Rick</button>
+<button class="troll-btn danger" data-troll="forceDisconnect">🔌 DC</button>
+<button class="troll-btn success" id="confettiAll">🎊 All</button>
+</div>
+<div class="form-group">
+<label class="form-label">Server Broadcast</label>
+<input type="text" class="form-input" id="broadcastMsg" placeholder="Announcement message..." maxlength="500">
+</div>
+<button class="btn btn-primary" id="sendBroadcast">📢 Broadcast to All</button>
+</div>
+<div class="ap-section" data-section="bans">
+<div class="form-label">Banned Usernames</div>
+<div class="ban-list" id="bannedUsers"></div>
+<div class="form-label">Banned IP Addresses</div>
+<div class="ban-list" id="bannedIPs"></div>
+<button class="btn btn-primary" id="refreshBans">🔄 Refresh Lists</button>
+</div>
+<div class="ap-section" data-section="settings">
+<div class="form-group">
+<label class="form-label">Slow Mode Duration (seconds)</label>
+<input type="number" class="form-input" id="slowDur" value="5" min="1">
+</div>
+<div class="form-group">
+<label style="color:#dcddde;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px">
+<input type="checkbox" id="slowEnabled"> Enable Slow Mode
+</label>
+</div>
+<button class="btn btn-primary" id="applySlowMode">Apply Slow Mode</button>
+<div class="form-group" style="margin-top:16px">
+<label class="form-label">Clear Channel Messages</label>
+<select class="form-select" id="clearChan">
+<option value="general">general</option>
+<option value="gaming">gaming</option>
+<option value="memes">memes</option>
+<option value="proxy">proxy</option>
+</select>
+</div>
+<button class="btn btn-danger" id="clearChatBtn">🗑️ Clear Channel</button>
+</div>
+<div class="ap-section" data-section="owner">
+<div class="owner-section">
+<div class="section-title">👑 Owner Controls</div>
+<p style="color:#96989d;font-size:12px;padding:8px">Advanced owner features coming soon...</p>
+</div>
+</div>
+</div>
+</div>
+
+<div class="container">
+<div class="sidebar">
+<div class="server-header">The Chet</div>
+<div class="channels">
+<div class="channel-section">
+<div class="section-header">Channels</div>
+<div class="channel active" data-channel="general">
+<span class="channel-name">general</span>
+<span class="unread-badge">0</span>
+</div>
+<div class="channel" data-channel="gaming">
+<span class="channel-name">gaming</span>
+<span class="unread-badge">0</span>
+</div>
+<div class="channel" data-channel="memes">
+<span class="channel-name">memes</span>
+<span class="unread-badge">0</span>
+</div>
+<div class="channel" data-channel="proxy">
+<span class="channel-name">proxy</span>
+<span class="unread-badge">0</span>
+</div>
+</div>
+<div class="channel-section">
+<div class="section-header">Custom Rooms</div>
+<div class="room-form">
+<input type="text" class="room-input" id="roomCodeInput" placeholder="Enter room code" maxlength="20" autocomplete="off" spellcheck="false">
+<button class="room-btn" id="joinRoomBtn">Join</button>
+<button class="room-btn alt" id="newRoomBtn" title="Make a random room code">New</button>
+</div>
+<div id="roomList"></div>
+</div>
+<div class="channel-section">
+<div class="section-header">Direct Messages</div>
+<div id="dmList"></div>
+</div>
+<div class="voice-section">
+<div class="section-header">Voice Channels</div>
+<div class="voice-channel" data-voice="general">
+<span class="voice-channel-name">
+<svg class="voice-icon" aria-hidden="true"><use href="#icon-speaker"></use></svg>
+general
+</span>
+<span class="voice-status" id="voiceStatusGeneral">0 users</span>
+</div>
+<div class="voice-controls" id="voiceControlsGeneral">
+<button class="voice-btn mute" id="muteVoiceGeneral">🎤 Mute</button>
+<button class="voice-btn leave" id="leaveVoiceGeneral">Leave</button>
+</div>
+<div class="voice-participants" id="voiceParticipantsGeneral"></div>
+
+<div class="voice-channel" data-voice="chill">
+<span class="voice-channel-name">
+<svg class="voice-icon" aria-hidden="true"><use href="#icon-speaker"></use></svg>
+chill
+</span>
+<span class="voice-status" id="voiceStatusChill">0 users</span>
+</div>
+<div class="voice-controls" id="voiceControlsChill">
+<button class="voice-btn mute" id="muteVoiceChill">🎤 Mute</button>
+<button class="voice-btn leave" id="leaveVoiceChill">Leave</button>
+</div>
+<div class="voice-participants" id="voiceParticipantsChill"></div>
+
+<div class="voice-channel" data-voice="gaming">
+<span class="voice-channel-name">
+<svg class="voice-icon" aria-hidden="true"><use href="#icon-speaker"></use></svg>
+gaming
+</span>
+<span class="voice-status" id="voiceStatusGaming">0 users</span>
+</div>
+<div class="voice-controls" id="voiceControlsGaming">
+<button class="voice-btn mute" id="muteVoiceGaming">🎤 Mute</button>
+<button class="voice-btn leave" id="leaveVoiceGaming">Leave</button>
+</div>
+<div class="voice-participants" id="voiceParticipantsGaming"></div>
+</div>
+</div>
+<div class="user-area" id="userArea">
+<div class="user-avatar" id="myAvatar"><span id="myInitial">U</span>
+<div class="notif-dot" id="notifDot"></div>
+<div class="avatar-badge owner" id="badgeOwner">👑</div>
+<div class="avatar-badge admin" id="badgeAdmin">⚡</div>
+<div class="avatar-badge vip" id="badgeVip">⭐</div>
+</div>
+<div class="user-display-name" id="myName">User</div>
+<button class="settings-btn" id="adminBtn" title="Admin Panel" style="display:none">🛡️</button>
+<button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
+<div class="conn-status" id="connStatus"></div>
+</div>
+</div>
+
+<div class="main-content">
+<div class="chat-header">
+<div class="current-channel" id="curChan">general</div>
+<div class="header-actions" id="roomTools" style="display:none">
+<span class="room-count" id="roomCount"></span>
+<button class="room-btn" id="copyInvite">Copy invite link</button>
+</div>
+</div>
+<div class="messages" id="msgArea"></div>
+<div class="input-area">
+<div class="typing-indicator" id="typingInd"></div>
+<div class="reply-bar" id="replyBar">
+<span class="reply-bar-text" id="replyText"></span>
+<button class="reply-bar-close" id="cancelReply">×</button>
+</div>
+<div class="input-wrapper">
+<div id="imagePreviewContainer"></div>
+<input type="text" class="msg-input" id="msgInput" placeholder="Message #general (try /help)" maxlength="2000" autocomplete="off">
+<input type="file" class="image-input" id="imageInput" accept="image/*">
+<button class="input-btn" id="imageBtn" title="Upload image">📷</button>
+<button class="send-btn" id="sendBtn" disabled>Send</button>
+</div>
+</div>
+</div>
+
+<div class="sidebar right" id="rightSidebar">
+<div class="right-toggle" id="rightToggle">▶</div>
+<div class="server-header">
+<span>Online Users</span>
+<span class="online-count" id="onlineCount">0</span>
+</div>
+<div class="users-section">
+<div class="role-header owner-header" id="ownerHeader" style="display:none">👑 Owners</div>
+<div id="ownersList"></div>
+<div class="role-header admin-header" id="adminHeader" style="display:none">⚡ Admins</div>
+<div id="adminsList"></div>
+<div class="role-header vip-header" id="vipHeader" style="display:none">⭐ VIP</div>
+<div id="vipsList"></div>
+<div class="role-header guest-header" id="guestHeader" style="display:none">Users</div>
+<div id="guestsList"></div>
+</div>
+</div>
+</div>
+
+<script>
+/* ============================================================
+   The Chet - client
+   Notes:
+   - Everything user-supplied is inserted with textContent / DOM
+     nodes (never innerHTML), so names and messages can't inject HTML.
+   - No passwords live in this file. The password typed on the login
+     screen is sent to the server, which decides the role.
+   ============================================================ */
+
+const EMOJIS = ['👍','👎','❤️','😂','😮','😢','🔥','🎉','👀','💯'];
+const WS_FALLBACK = 'wss://chet.jplevandoski.workers.dev/ws'; // used only if the page isn't served over http(s)
+const MAX_IMAGE_CHARS = 115000;                               // must stay below the server's limit (120000)
+const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+// Edit these to change the rules shown when someone clicks Join.
+const RULES = [
+  ['Be respectful', 'Treat everyone kindly. No harassment, bullying or personal attacks.'],
+  ['No hate speech', 'Slurs and discrimination of any kind are not allowed.'],
+  ['No spam or flooding', "Don't repeat messages, flood the chat, or spam images."],
+  ['Keep it clean', 'No NSFW, graphic, or illegal content.'],
+  ['No impersonation', "Don't pretend to be staff or another member."],
+  ['Respect staff', 'Follow instructions from admins and moderators.'],
+  ['Protect privacy', "Don't share other people's personal information. Room codes are for friends you trust."]
+];
+
+const $ = id => document.getElementById(id);
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } }
+};
+
+function socketUrl() {
+  const override = new URLSearchParams(location.search).get('ws');
+  if (override) return override;
+  if (location.protocol === 'http:' || location.protocol === 'https:') {
+    return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+  }
+  return WS_FALLBACK;
+}
+
+/* ---------- state ---------- */
+let ws = null, connected = false, joinedOnce = false, noReconnect = false, reconnectNotified = false, reconnectTimer = null;
+let username = '', loginPassword = '', uuid = store.get('uuid') || null;
+let isAdmin = false, isVIP = false, isOwner = false;
+let curChan = 'general', chatType = 'channel', curDM = null, replyTo = null;
+const messages = {}, dmMessages = {}, dmPartners = {}, unreadChannels = {}, unreadDMs = {};
+let users = [];
+let hasUnread = false, selectedBanType = 'ip', selectedImage = null, swReg = null;
+let currentVoiceChannel = null, localStream = null, isMuted = false, voiceBusy = false;
+const peers = {}, voiceChannelData = {};
+const userSettings = { profileColor: 'default', profanityFilter: false, messageGrouping: false, lightTheme: false, notifications: 'all' };
+
+// custom rooms
+const roomUsersMap = {};
+let savedRooms = [];
+let pendingInviteRoom = null;
+
+const isStaff = () => isAdmin || isOwner;
+const isActive = () => !document.hidden && document.hasFocus();
+
+/* ---------- settings ---------- */
+function loadSettings() {
+  try { Object.assign(userSettings, JSON.parse(store.get('chetSettings') || '{}')); } catch { /* ignore bad data */ }
+}
+function saveSettings() { store.set('chetSettings', JSON.stringify(userSettings)); }
+function applySettings() {
+  document.body.classList.toggle('light-theme', userSettings.lightTheme);
+  $('themeToggle').classList.toggle('active', userSettings.lightTheme);
+  $('profanityToggle').classList.toggle('active', userSettings.profanityFilter);
+  $('groupingToggle').classList.toggle('active', userSettings.messageGrouping);
+  $('notifOffToggle').classList.toggle('active', userSettings.notifications === 'off');
+  $('notifDMToggle').classList.toggle('active', userSettings.notifications === 'dm');
+  $('notifAllToggle').classList.toggle('active', userSettings.notifications === 'all');
+  document.querySelectorAll('.color-option').forEach(o => o.classList.toggle('selected', o.dataset.color === userSettings.profileColor));
+  $('myAvatar').className = 'user-avatar' + (userSettings.profileColor !== 'default' ? ' color-' + userSettings.profileColor : '');
+}
+
+/* ---------- custom rooms (helpers) ---------- */
+const ROOM_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
+const normRoom = v => String(v || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 20);
+const isRoom = ch => typeof ch === 'string' && ch.startsWith('room:');
+const roomChan = code => 'room:' + code;
+const chanLabel = ch => isRoom(ch) ? '🔑 ' + ch.slice(5) : '#' + ch;
+function randomRoomCode() {
+  const a = new Uint32Array(6);
+  crypto.getRandomValues(a);
+  return [...a].map(n => ROOM_ALPHABET[n % ROOM_ALPHABET.length]).join('');
+}
+function loadRooms() {
+  try {
+    const arr = JSON.parse(store.get('chetRooms') || '[]');
+    savedRooms = Array.isArray(arr) ? arr.map(normRoom).filter(c => c.length >= 3).slice(0, 10) : [];
+  } catch { savedRooms = []; }
+}
+function saveRooms() { store.set('chetRooms', JSON.stringify(savedRooms)); }
+
+/* ---------- profanity filter (applied when displaying, whole words only) ---------- */
+const BAD_WORDS = ['fuck','shit','damn','ass','bitch','bastard','nigga','nigger','faggot','fuk'];
+const LEET = { a: '[a@4]', e: '[e3]', i: '[i1!]', o: '[o0]', s: '[s$5]', l: '[l1]', t: '[t7]' };
+const PROFANITY_RE = new RegExp(
+  '(?<![\\w$@])(?:' + BAD_WORDS.map(w => [...w].map(c => LEET[c] || c).join('')).join('|') +
+  ')(?:s|ed|er|ers|ing|in|y)?(?![\\w$@])', 'gi');
+function filterProfanity(text) {
+  return userSettings.profanityFilter ? text.replace(PROFANITY_RE, m => '*'.repeat(m.length)) : text;
+}
+
+/* ---------- browser notifications ---------- */
+const notifSupported = () => 'Notification' in window;
+
+function updateNotifStatus() {
+  const status = $('notifPermStatus'), btn = $('enableBrowserNotif');
+  if (!notifSupported()) { status.textContent = 'Not supported in this browser'; btn.style.display = 'none'; return; }
+  if (!window.isSecureContext) { status.textContent = 'Needs an https page'; btn.style.display = 'none'; return; }
+  const p = Notification.permission;
+  if (p === 'granted') {
+    status.textContent = 'On: alerts appear when this tab is in the background';
+    btn.textContent = 'Send test'; btn.style.display = '';
+  } else if (p === 'denied') {
+    status.textContent = "Blocked: allow notifications for this site in your browser's site settings";
+    btn.style.display = 'none';
+  } else {
+    status.textContent = 'Not enabled yet';
+    btn.textContent = 'Enable'; btn.style.display = '';
+  }
+}
+
+// Must be called from a click/keypress or the browser will ignore the request.
+async function requestNotifPerm() {
+  try {
+    if (notifSupported() && window.isSecureContext && Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  } catch { /* unsupported */ }
+  updateNotifStatus();
+}
+
+async function showBrowserNotif(title, body, force) {
+  if (!notifSupported() || Notification.permission !== 'granted') return;
+  if (!force && (userSettings.notifications === 'off' || isActive())) return;
+  const opts = { body, tag: 'chet-' + Date.now() };
+  // Prefer the service worker: it's the only route that works on Android Chrome.
+  try {
+    const reg = swReg || (navigator.serviceWorker && await navigator.serviceWorker.getRegistration());
+    if (reg && reg.showNotification) { await reg.showNotification(title, opts); return; }
+  } catch { /* fall back to the plain API */ }
+  try {
+    const n = new Notification(title, opts);
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch (e) { console.error('Notification error:', e); }
+}
+
+function registerWorker() {
+  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+  navigator.serviceWorker.register('sw.js').then(r => { swReg = r; }).catch(e => console.warn('Service worker not registered:', e));
+}
+
+/* ---------- in-page notifications / favicon ---------- */
+document.addEventListener('visibilitychange', () => { if (isActive()) clearFaviconNotif(); });
+window.addEventListener('focus', clearFaviconNotif);
+
+const HELP_COMMANDS = [{ name: '/help', desc: 'Show this help menu' }];
+const FAVICON_BASE = "<text y='0.9em' font-size='90'>💀</text>";
+function updateFavicon(on) {
+  const badge = on ? "<circle cx='85' cy='15' r='15' fill='%23ed4245'/><text x='85' y='22' text-anchor='middle' font-size='18' fill='white'>!</text>" : '';
+  $('favicon').href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>" + FAVICON_BASE + badge + '</svg>';
+}
+function showFaviconNotif() { if (!isActive()) { hasUnread = true; updateFavicon(true); $('notifDot').classList.add('show'); } }
+function clearFaviconNotif() { hasUnread = false; updateFavicon(false); $('notifDot').classList.remove('show'); }
+
+// In-page toast. `actions` = [{label, cls, onClick}] makes it a prompt that stays until answered.
+function notify(title, body, actions) {
+  const n = el('div', 'notif');
+  n.appendChild(el('div', 'notif-title', title));
+  n.appendChild(el('div', 'notif-body', body));
+  if (actions && actions.length) {
+    const row = el('div', 'notif-actions');
+    for (const a of actions) {
+      const b = el('button', 'notif-btn ' + a.cls, a.label);
+      b.onclick = () => { a.onClick(); n.remove(); };
+      row.appendChild(b);
+    }
+    n.appendChild(row);
+    setTimeout(() => n.remove(), 60000);
+  } else {
+    setTimeout(() => n.remove(), 4000);
+  }
+  $('notifs').appendChild(n);
+  showFaviconNotif();
+  return n;
+}
+
+function send(d) {
+  if (ws && ws.readyState === 1) { ws.send(JSON.stringify(d)); return true; }
+  return false;
+}
+
+/* ---------- images ---------- */
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+    img.src = url;
+  });
+}
+
+// Shrinks the image until its data URL fits the server's per-message limit.
+async function uploadImage(file) {
+  const img = await loadImage(file);
+  let maxDim = 800, quality = 0.7;
+  for (let i = 0; i < 8; i++) {
+    let w = img.width, h = img.height;
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+      else { w = Math.round(w * maxDim / h); h = maxDim; }
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+    if (dataUrl.length <= MAX_IMAGE_CHARS) return dataUrl;
+    maxDim = Math.round(maxDim * 0.8);
+    quality = Math.max(0.4, quality - 0.05);
+  }
+  throw new Error('Image is too large');
+}
+
+/* ---------- connection ---------- */
+function setLoginBusy(busy) { $('loginBtn').disabled = busy; }
+
+function connect() {
+  clearTimeout(reconnectTimer);
+  if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+  const url = socketUrl();
+  console.log('Connecting to', url);
+  const sock = new WebSocket(url);
+  ws = sock;
+
+  sock.onopen = () => {
+    send({ type: 'join', username, uuid: uuid || undefined, password: loginPassword || undefined });
+  };
+  sock.onmessage = e => {
+    try { handle(JSON.parse(e.data)); } catch (er) { console.error('Message error:', er); }
+  };
+  sock.onerror = () => console.error('WebSocket error (see the close event for details)');
+  sock.onclose = e => {
+    if (sock !== ws) return;
+    console.log('WebSocket closed:', e.code, e.reason);
+    const wasConnected = connected;
+    connected = false;
+    $('connStatus').classList.remove('online');
+    $('sendBtn').disabled = true;
+    if (currentVoiceChannel) cleanupVoice();
+
+    if (e.code === 4000) {
+      noReconnect = true;
+      notify('⚠️', 'You signed in from another tab or window, so this one was disconnected.');
+      return;
+    }
+    if (noReconnect) return;
+
+    if (wasConnected && !reconnectNotified) { notify('⚠️', 'Disconnected. Reconnecting...'); reconnectNotified = true; }
+    if (!joinedOnce) $('loginError').textContent = 'Could not reach the server. Retrying...';
+    reconnectTimer = setTimeout(connect, 3000);
+  };
+}
+
+/* ---------- login flow: Join -> rules popup -> connect ---------- */
+const adminFieldShown = () => $('adminField').style.display !== 'none';
+function showAdminField(show) {
+  $('adminField').style.display = show ? 'block' : 'none';
+  $('adminToggle').textContent = show ? 'Cancel admin login' : 'Admin login';
+  if (show) $('pwdInput').focus(); else $('pwdInput').value = '';
+}
+
+function login() {
+  $('loginError').textContent = '';
+  $('rulesModal').classList.add('show');
+}
+
+function cancelRules() { $('rulesModal').classList.remove('show'); }
+
+function acceptRules() {
+  $('rulesModal').classList.remove('show');
+  username = $('usernameInput').value.trim() || 'Guest';
+  loginPassword = adminFieldShown() ? $('pwdInput').value : '';
+  noReconnect = false;
+  $('loginError').textContent = 'Connecting...';
+  setLoginBusy(true);
+  requestNotifPerm();
+  connect();
+}
+
+function failLogin(message) {
+  noReconnect = true;
+  joinedOnce = false;
+  setLoginBusy(false);
+  $('loginOverlay').style.display = 'flex';
+  $('loginError').textContent = message;
+  if (loginPassword) showAdminField(true);
+}
+
+/* ---------- message handling ---------- */
+function handle(d) {
+  const h = {
+    joined: () => {
+      uuid = d.uuid; store.set('uuid', uuid);
+      if (d.username) username = d.username;
+      isOwner = !!d.isOwner; isAdmin = !!d.isAdmin; isVIP = !!d.isVIP;
+      connected = true; joinedOnce = true; reconnectNotified = false;
+
+      $('connStatus').classList.add('online');
+      $('sendBtn').disabled = false;
+      $('badgeOwner').classList.toggle('show', isOwner);
+      $('badgeAdmin').classList.toggle('show', isAdmin && !isOwner);
+      $('badgeVip').classList.toggle('show', isVIP);
+      $('ownerTab').style.display = isOwner ? 'block' : 'none';
+      $('adminBtn').style.display = isStaff() ? 'flex' : 'none';
+      $('myName').textContent = username;
+      $('myInitial').textContent = username.charAt(0).toUpperCase();
+      $('loginOverlay').style.display = 'none';
+      $('loginError').textContent = '';
+      setLoginBusy(false);
+      applySettings();
+
+      send({ type: 'updateProfile', profileColor: userSettings.profileColor });
+      // Rooms are per-connection on the server, so join them again (without switching to them).
+      for (const code of savedRooms) send({ type: 'joinRoom', code, restore: true });
+      // Drop cached history (we may have missed messages) and refetch what's on screen.
+      for (const k of Object.keys(messages)) delete messages[k];
+      for (const k of Object.keys(dmMessages)) delete dmMessages[k];
+      if (chatType === 'dm' && curDM) send({ type: 'getPrivateHistory', chatId: curDM });
+      else send({ type: 'getHistory', channel: curChan });
+      // Opened from an invite link.
+      if (pendingInviteRoom) { requestRoom(pendingInviteRoom, false); pendingInviteRoom = null; }
+    },
+    joinError: () => failLogin(d.message || 'Could not join'),
+    dmList: () => d.chats.forEach(c => { dmPartners[c.chatId] = c.with; addDM(c.chatId, c.with); }),
+
+    roomJoined: () => {
+      if (!savedRooms.includes(d.code)) { savedRooms.push(d.code); saveRooms(); }
+      addRoomItem(d.code);
+      if (!d.restore) switchChan(roomChan(d.code));
+    },
+    roomUsers: () => { roomUsersMap[d.code] = d.users; updateRoomCount(); },
+
+    message: () => {
+      const m = d.message;
+      if (!messages[m.channel]) messages[m.channel] = [];
+      messages[m.channel].push(m);
+      if (messages[m.channel].length > 200) messages[m.channel].shift();
+      const viewing = chatType === 'channel' && m.channel === curChan;
+      if (viewing) render();
+      if (m.author === username) return;
+      if (!viewing) { unreadChannels[m.channel] = (unreadChannels[m.channel] || 0) + 1; updateUnreadBadge(m.channel); }
+      if (userSettings.notifications === 'all') {
+        const preview = m.imageUrl && !m.text ? '[Image]' : filterProfanity(m.text).slice(0, 50);
+        showFaviconNotif();
+        if (!viewing) notify('💬 New Message', `${chanLabel(m.channel)}: ${m.author}: ${preview}`);
+        showBrowserNotif(`New message in ${chanLabel(m.channel)}`, `${m.author}: ${preview}`);
+      }
+    },
+    history: () => { messages[d.channel] = d.messages; if (chatType === 'channel' && d.channel === curChan) render(true); },
+    userList: () => { users = d.users; updUsers(); },
+    typing: () => {
+      const match = d.isPrivate ? (chatType === 'dm' && d.chatId === curDM) : (chatType === 'channel' && d.channel === curChan);
+      if (!match) return;
+      $('typingInd').textContent = d.isTyping ? `${d.username} is typing...` : '';
+      clearTimeout(typingClear);
+      if (d.isTyping) typingClear = setTimeout(() => { $('typingInd').textContent = ''; }, 5000);
+    },
+
+    privateChatRequest: () => {
+      notify('💬 DM Request', `${d.from} wants to chat`, [
+        { label: 'Accept', cls: 'notif-accept', onClick: () => send({ type: 'privateChatResponse', from: d.from, accepted: true }) },
+        { label: 'Decline', cls: 'notif-decline', onClick: () => send({ type: 'privateChatResponse', from: d.from, accepted: false }) }
+      ]);
+      showBrowserNotif('DM Request', `${d.from} wants to chat with you`);
+    },
+    privateChatAccepted: () => { dmPartners[d.chatId] = d.with; addDM(d.chatId, d.with); switchDM(d.chatId, d.with); },
+    privateChatRejected: () => notify('❌', `${d.by} declined your DM request`),
+    privateMessage: () => {
+      const m = d.message;
+      if (!dmPartners[m.chatId] && m.author !== username) { dmPartners[m.chatId] = m.author; addDM(m.chatId, m.author); }
+      if (!dmMessages[m.chatId]) dmMessages[m.chatId] = [];
+      if (!dmMessages[m.chatId].some(x => x.id === m.id)) dmMessages[m.chatId].push(m);
+      const viewing = chatType === 'dm' && m.chatId === curDM;
+      if (viewing) render();
+      if (m.author === username) return;
+      if (!viewing) { unreadDMs[m.chatId] = (unreadDMs[m.chatId] || 0) + 1; updateDMBadge(m.chatId); }
+      if (userSettings.notifications !== 'off') {
+        const partner = dmPartners[m.chatId] || m.author;
+        const preview = m.imageUrl && !m.text ? '[Image]' : filterProfanity(m.text).slice(0, 50);
+        showFaviconNotif();
+        if (!viewing) notify('💬 New DM', `@${partner}: ${preview}`);
+        showBrowserNotif(`New DM from ${partner}`, preview);
+      }
+    },
+    privateHistory: () => { dmMessages[d.chatId] = d.messages; if (chatType === 'dm' && d.chatId === curDM) render(true); },
+    reactionUpdate: () => {
+      const arr = d.isPrivate ? dmMessages[d.chatId] : messages[d.channel];
+      const m = arr && arr.find(x => x.id === d.messageId);
+      if (m) { m.reactions = d.reactions; render(); }
+    },
+
+    kicked: () => { noReconnect = true; alert(d.message); location.href = d.redirectUrl || 'https://google.com'; },
+    banned: () => { noReconnect = true; alert(d.message); location.href = 'https://google.com'; },
+    timedOut: () => { notify('⏰', d.message); lockInput(d.duration); },
+    forceMute: () => { notify('🔇', d.message || `Muted for ${d.duration}s`); lockInput(d.duration); },
+    warning: () => notify(`⚠️ Warning #${d.count}`, d.message),
+    broadcast: () => notify('📢', d.message),
+    adminActionSuccess: () => notify('✅', d.message || 'Done'),
+    error: () => notify('❌', d.message),
+    banList: () => renderBanList(d),
+    chatCleared: () => { messages[d.channel] = []; if (chatType === 'channel' && d.channel === curChan) render(); },
+    messageDeleted: () => {
+      if (messages[d.channel]) {
+        messages[d.channel] = messages[d.channel].filter(m => m.id !== d.messageId);
+        if (chatType === 'channel' && d.channel === curChan) render();
+      }
+    },
+
+    // admin "effects"
+    spinScreen: () => { document.body.style.animation = 'spin 2s linear'; setTimeout(() => { document.body.style.animation = ''; }, 2000); },
+    shakeScreen: () => { document.body.style.animation = 'shake .5s'; setTimeout(() => { document.body.style.animation = ''; }, 500); },
+    flipScreen: () => { document.body.style.transform = 'rotate(180deg)'; setTimeout(() => { document.body.style.transform = ''; }, 5000); },
+    invertColors: () => { document.body.style.filter = 'invert(1)'; setTimeout(() => { document.body.style.filter = ''; }, 5000); },
+    rainbow: () => { document.body.style.animation = 'rainbow 2s infinite'; setTimeout(() => { document.body.style.animation = ''; }, 5000); },
+    blur: () => { document.body.style.filter = 'blur(5px)'; setTimeout(() => { document.body.style.filter = ''; }, 5000); },
+    matrix: () => { document.body.style.background = '#000'; setTimeout(() => { document.body.style.background = ''; }, 5000); },
+    emojiSpam: () => {
+      for (let i = 0; i < 20; i++) setTimeout(() => {
+        const e = el('div', null, ['😂','🔥','💀','🎉'][Math.floor(Math.random() * 4)]);
+        e.style.cssText = `position:fixed;left:${Math.random() * window.innerWidth}px;top:${Math.random() * window.innerHeight}px;font-size:${20 + Math.random() * 30}px;pointer-events:none;z-index:99999;`;
+        document.body.appendChild(e);
+        setTimeout(() => e.remove(), 1000);
+      }, i * 80);
+    },
+    confetti: () => {
+      const cols = ['#ff0','#f0f','#0ff','#f00','#0f0'];
+      for (let i = 0; i < 50; i++) setTimeout(() => {
+        const c = el('div', 'confetti');
+        c.style.left = Math.random() * window.innerWidth + 'px';
+        c.style.background = cols[Math.floor(Math.random() * cols.length)];
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 3000);
+      }, i * 20);
+    },
+    rickRoll: () => window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank'),
+    forceDisconnect: () => { noReconnect = true; alert('Disconnected by admin'); if (ws) ws.close(); },
+
+    // voice
+    voiceUsers: () => { voiceChannelData[d.channel] = d.users; updateVoiceUI(d.channel); },
+    voiceJoined: () => { if (d.channel === currentVoiceChannel) d.peers.forEach(p => createPeer(p, true)); },
+    voiceOffer: () => handleVoiceOffer(d),
+    voiceAnswer: () => handleVoiceAnswer(d),
+    voiceIceCandidate: () => handleIceCandidate(d),
+    voiceUserLeft: () => { if (d.channel === currentVoiceChannel) closePeer(d.username); }
+  };
+  if (Object.hasOwn(h, d.type)) h[d.type]();
+}
+
+let typingClear = null, lockTimer = null;
+function lockInput(seconds) {
+  $('msgInput').disabled = true; $('sendBtn').disabled = true; $('imageBtn').disabled = true;
+  clearTimeout(lockTimer);
+  lockTimer = setTimeout(() => {
+    $('msgInput').disabled = false; $('imageBtn').disabled = false; $('sendBtn').disabled = !connected;
+  }, seconds * 1000);
+}
+
+/* ---------- unread badges ---------- */
+function updateUnreadBadge(channel) {
+  const item = [...document.querySelectorAll('.channel[data-channel]')].find(e => e.dataset.channel === channel);
+  if (!item) return;
+  const count = unreadChannels[channel] || 0;
+  item.querySelector('.unread-badge').textContent = count;
+  item.classList.toggle('has-unread', count > 0);
+}
+
+function dmItem(chatId) {
+  return [...document.querySelectorAll('#dmList .channel')].find(e => e.dataset.dm === chatId);
+}
+function updateDMBadge(chatId) {
+  const item = dmItem(chatId);
+  if (!item) return;
+  const count = unreadDMs[chatId] || 0;
+  let badge = item.querySelector('.dm-badge');
+  if (count > 0) {
+    if (!badge) { badge = el('span', 'dm-badge'); item.appendChild(badge); }
+    badge.textContent = count;
+  } else if (badge) badge.remove();
+  item.classList.toggle('has-unread', count > 0);
+}
+
+/* ---------- user lists ---------- */
+function makeUserItem(u) {
+  const row = el('div', 'user-item');
+  const name = el('span', 'user-name');
+  const icon = u.isOwner ? '👑 ' : u.isAdmin ? '⚡ ' : u.isVIP ? '⭐ ' : '';
+  name.appendChild(document.createTextNode(icon + u.username + (u.username === username ? ' (you)' : '')));
+  if (u.isOwner) name.appendChild(el('span', 'role-badge owner', 'OWNER'));
+  else if (u.isAdmin) name.appendChild(el('span', 'role-badge admin', 'ADMIN'));
+  else if (u.isVIP) name.appendChild(el('span', 'role-badge vip', 'VIP'));
+  row.appendChild(name);
+  if (u.username !== username) {
+    const btn = el('button', 'dm-btn', 'DM');
+    btn.onclick = () => reqDM(u.username);
+    row.appendChild(btn);
+  }
+  return row;
+}
+
+function updUsers() {
+  const groups = [
+    ['ownerHeader', 'ownersList', users.filter(u => u.isOwner)],
+    ['adminHeader', 'adminsList', users.filter(u => u.isAdmin && !u.isOwner)],
+    ['vipHeader', 'vipsList', users.filter(u => u.isVIP && !u.isAdmin && !u.isOwner)],
+    ['guestHeader', 'guestsList', users.filter(u => !u.isVIP && !u.isAdmin && !u.isOwner)]
+  ];
+  for (const [header, list, members] of groups) {
+    $(header).style.display = members.length ? 'block' : 'none';
+    $(list).replaceChildren(...members.map(makeUserItem));
+  }
+  $('onlineCount').textContent = users.length;
+  updSelects();
+}
+
+function fillSelect(sel, names) {
+  const prev = sel.value;
+  sel.replaceChildren(new Option('-- Select User --', ''), ...names.map(n => new Option(n, n)));
+  if (names.includes(prev)) sel.value = prev;
+}
+
+function updSelects() {
+  const others = users.filter(u => u.username !== username).map(u => u.username);
+  fillSelect($('modUser'), others);
+  fillSelect($('trollUser'), others);
+
+  const box = $('apUsers');
+  if (!others.length) { box.replaceChildren(el('div', 'empty', 'No other users online')); return; }
+  box.replaceChildren(...others.map(name => {
+    const row = el('div', 'ap-user');
+    const info = el('div', 'ap-user-info');
+    info.appendChild(el('div', 'ap-user-avatar', name.charAt(0).toUpperCase()));
+    info.appendChild(el('div', 'ap-user-name', name));
+    const actions = el('div', 'ap-user-actions');
+    const kick = el('button', 'ap-btn ap-btn-kick', 'Kick');
+    kick.onclick = () => send({ type: 'adminKick', targetUsername: name });
+    const mute = el('button', 'ap-btn ap-btn-mute', 'Mute 60s');
+    mute.onclick = () => send({ type: 'adminForceMute', targetUsername: name, duration: 60 });
+    const ban = el('button', 'ap-btn ap-btn-ban', 'Ban');
+    ban.onclick = () => { if (confirm(`Ban ${name}?`)) send({ type: 'adminBan', targetUsername: name, banType: selectedBanType }); };
+    actions.append(kick, mute, ban);
+    row.append(info, actions);
+    return row;
+  }));
+}
+
+function renderBanList(d) {
+  const fill = (box, items, onUnban, emptyText) => {
+    if (!items.length) { box.replaceChildren(el('div', 'empty', emptyText)); return; }
+    box.replaceChildren(...items.map(item => {
+      const row = el('div', 'ban-item');
+      row.appendChild(el('span', null, item));
+      const b = el('button', 'unban-btn', 'Unban');
+      b.onclick = () => onUnban(item);
+      row.appendChild(b);
+      return row;
+    }));
+  };
+  fill($('bannedUsers'), d.bannedUsers, u => send({ type: 'adminUnban', username: u }), 'No banned usernames');
+  fill($('bannedIPs'), d.bannedIPs, ip => send({ type: 'adminUnbanIP', ip }), 'No banned IPs');
+}
+
+function reqDM(name) {
+  if (send({ type: 'privateChatRequest', targetUsername: name })) notify('💬', `DM request sent to ${name}`);
+}
+
+/* ---------- DMs, channels & rooms ---------- */
+function addDM(id, name) {
+  if (dmItem(id)) return;
+  const item = el('div', 'channel private');
+  item.dataset.dm = id;
+  item.appendChild(el('span', 'channel-name', name));
+  const close = el('button', 'close-dm', '×');
+  close.onclick = e => {
+    e.stopPropagation();
+    item.remove();
+    delete dmPartners[id]; delete dmMessages[id]; delete unreadDMs[id];
+    if (curDM === id) switchChan('general');
+  };
+  item.appendChild(close);
+  item.onclick = () => switchDM(id, dmPartners[id] || name);
+  $('dmList').appendChild(item);
+}
+
+function roomItem(code) {
+  return [...document.querySelectorAll('#roomList .channel')].find(e => e.dataset.channel === roomChan(code));
+}
+
+function addRoomItem(code) {
+  if (roomItem(code)) return;
+  const item = el('div', 'channel room');
+  item.dataset.channel = roomChan(code);
+  item.appendChild(el('span', 'channel-name', code));
+  const right = el('span', 'room-right');
+  right.appendChild(el('span', 'unread-badge', '0'));
+  const close = el('button', 'close-dm', '×');
+  close.title = 'Leave room';
+  close.onclick = e => { e.stopPropagation(); leaveRoom(code); };
+  right.appendChild(close);
+  item.appendChild(right);
+  item.onclick = () => switchChan(roomChan(code));
+  $('roomList').appendChild(item);
+  if (curChan === roomChan(code) && chatType === 'channel') item.classList.add('active');
+}
+
+function requestRoom(rawCode, restore) {
+  const code = normRoom(rawCode);
+  if (code.length < 3) { notify('❌', 'Room codes need 3-20 letters, numbers or dashes'); return; }
+  if (!connected) { notify('⚠️', 'Not connected yet'); return; }
+  send({ type: 'joinRoom', code, restore: !!restore });
+}
+
+function leaveRoom(code) {
+  send({ type: 'leaveRoom', code });
+  const item = roomItem(code);
+  if (item) item.remove();
+  savedRooms = savedRooms.filter(c => c !== code);
+  saveRooms();
+  delete messages[roomChan(code)];
+  delete roomUsersMap[code];
+  delete unreadChannels[roomChan(code)];
+  if (curChan === roomChan(code) && chatType === 'channel') switchChan('general');
+}
+
+function updateRoomCount() {
+  if (!(chatType === 'channel' && isRoom(curChan))) return;
+  const list = roomUsersMap[curChan.slice(5)] || [];
+  $('roomCount').textContent = `${list.length} here`;
+  $('roomCount').title = list.join(', ');
+}
+
+function inviteLink(code) {
+  return location.href.split(/[?#]/)[0] + '?room=' + encodeURIComponent(code);
+}
+
+async function copyInvite() {
+  if (!isRoom(curChan)) return;
+  const code = curChan.slice(5);
+  const link = inviteLink(code);
+  try {
+    await navigator.clipboard.writeText(link);
+    notify('🔗', 'Invite link copied. Friends can also type the code: ' + code);
+  } catch {
+    window.prompt('Copy this invite link:', link);
+  }
+}
+
+function resetComposerState() {
+  sendTyping(false);
+  $('typingInd').textContent = '';
+  replyTo = null;
+  $('replyBar').classList.remove('show');
+  $('replyText').textContent = '';
+}
+
+function switchChan(ch) {
+  resetComposerState();
+  chatType = 'channel'; curDM = null; curChan = ch;
+  const room = isRoom(ch);
+  $('curChan').textContent = room ? ch.slice(5) : ch;
+  $('curChan').classList.remove('private');
+  $('curChan').classList.toggle('room', room);
+  $('roomTools').style.display = room ? 'flex' : 'none';
+  $('msgInput').placeholder = room ? `Message room ${ch.slice(5)}` : `Message #${ch} (try /help)`;
+  document.querySelectorAll('.channel').forEach(c => c.classList.toggle('active', c.dataset.channel === ch));
+  if (!messages[ch]) send({ type: 'getHistory', channel: ch }); else render(true);
+  unreadChannels[ch] = 0;
+  updateUnreadBadge(ch);
+  updateRoomCount();
+  clearFaviconNotif();
+}
+
+function switchDM(id, name) {
+  resetComposerState();
+  chatType = 'dm'; curDM = id;
+  $('curChan').textContent = name; $('curChan').classList.add('private'); $('curChan').classList.remove('room');
+  $('roomTools').style.display = 'none';
+  $('msgInput').placeholder = `Message @${name}`;
+  document.querySelectorAll('.channel').forEach(c => c.classList.toggle('active', c.dataset.dm === id));
+  if (!dmMessages[id]) send({ type: 'getPrivateHistory', chatId: id }); else render(true);
+  unreadDMs[id] = 0; updateDMBadge(id); clearFaviconNotif();
+}
+
+/* ---------- rendering ---------- */
+function render(forceBottom) {
+  const area = $('msgArea');
+  const list = chatType === 'dm' ? (dmMessages[curDM] || []) : (messages[curChan] || []);
+  const nearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
+  const oldTop = area.scrollTop;
+  area.replaceChildren();
+  if (!list.length) { area.appendChild(el('div', 'empty', 'No messages yet.')); return; }
+
+  const byId = new Map(list.map(m => [m.id, m]));
+  let prev = null;
+  for (const m of list) {
+    const grouped = userSettings.messageGrouping && prev && prev.author === m.author && (m.timestamp - prev.timestamp) < 5 * 60 * 1000;
+    const msg = el('div', 'message' + (grouped ? ' grouped' : ''));
+
+    const avatar = el('div', 'msg-avatar' + (m.color && m.color !== 'default' ? ` color-${m.color}` : ''), (m.author || 'U').charAt(0).toUpperCase());
+    const content = el('div', 'msg-content');
+
+    const header = el('div', 'msg-header');
+    header.appendChild(el('span', 'msg-author ' + (m.role || 'normal'), m.author));
+    header.appendChild(el('span', 'msg-time', new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })));
+    content.appendChild(header);
+
+    const target = m.replyTo && byId.get(m.replyTo);
+    if (target) {
+      const reply = el('div', 'msg-reply');
+      reply.appendChild(el('span', 'msg-reply-author', target.author));
+      const snippet = target.imageUrl && !target.text ? '[Image]' : filterProfanity(target.text || '').slice(0, 100);
+      reply.appendChild(document.createTextNode(': ' + snippet));
+      content.appendChild(reply);
+    }
+
+    if (m.text) content.appendChild(el('div', 'msg-text', filterProfanity(m.text)));
+
+    if (m.imageUrl) {
+      const img = el('img', 'msg-image');
+      img.src = m.imageUrl; img.alt = 'Message image';
+      img.onclick = () => { $('imageModal').classList.add('show'); $('imageModal').querySelector('img').src = m.imageUrl; };
+      content.appendChild(img);
+    }
+
+    const entries = Object.entries(m.reactions || {});
+    if (entries.length) {
+      const reactions = el('div', 'reactions');
+      for (const [emoji, who] of entries) {
+        const chip = el('button', 'reaction' + (who.includes(username) ? ' active' : ''));
+        chip.appendChild(el('span', null, emoji));
+        chip.appendChild(el('span', 'reaction-count', String(who.length)));
+        chip.onclick = () => toggleReaction(m.id, emoji);
+        reactions.appendChild(chip);
+      }
+      content.appendChild(reactions);
+    }
+
+    const actions = el('div', 'msg-actions');
+    const replyBtn = el('button', 'msg-action', '↩');
+    replyBtn.title = 'Reply';
+    replyBtn.onclick = () => {
+      replyTo = m;
+      $('replyText').textContent = `Replying to ${m.author}`;
+      $('replyBar').classList.add('show');
+      $('msgInput').focus();
+    };
+    actions.appendChild(replyBtn);
+    const reactBtn = el('button', 'msg-action', '😊');
+    reactBtn.title = 'React';
+    reactBtn.onclick = () => showEmojiPicker(reactBtn, m.id);
+    actions.appendChild(reactBtn);
+    if (isStaff() && chatType === 'channel') {
+      const del = el('button', 'msg-action danger', '🗑');
+      del.title = 'Delete message';
+      del.onclick = () => send({ type: 'adminDeleteMessage', channel: curChan, messageId: m.id });
+      actions.appendChild(del);
+    }
+
+    msg.append(actions, avatar, content);
+    area.appendChild(msg);
+    prev = m;
+  }
+  if (forceBottom || nearBottom) area.scrollTop = area.scrollHeight;
+  else area.scrollTop = oldTop;
+}
+
+function toggleReaction(messageId, emoji) {
+  send({ type: 'toggleReaction', messageId, emoji, isPrivate: chatType === 'dm', channel: curChan, chatId: curDM });
+}
+
+function showEmojiPicker(btn, messageId) {
+  document.querySelectorAll('.emoji-picker').forEach(p => p.remove());
+  const picker = el('div', 'emoji-picker show');
+  for (const emoji of EMOJIS) {
+    const b = el('button', null, emoji);
+    b.onclick = () => { toggleReaction(messageId, emoji); picker.remove(); };
+    picker.appendChild(b);
+  }
+  btn.parentElement.appendChild(picker);
+  setTimeout(() => document.addEventListener('click', function closePicker(e) {
+    if (!picker.contains(e.target) && e.target !== btn) { picker.remove(); document.removeEventListener('click', closePicker); }
+  }), 0);
+}
+
+/* ---------- sending ---------- */
+let typingTimer = null, typingSent = false;
+function sendTyping(on) {
+  if (on === typingSent) return;
+  typingSent = on;
+  if (!connected) return;
+  send(chatType === 'dm'
+    ? { type: 'typing', isTyping: on, isPrivate: true, chatId: curDM }
+    : { type: 'typing', isTyping: on, isPrivate: false, channel: curChan });
+}
+
+function showHelp() {
+  $('helpContent').replaceChildren(...HELP_COMMANDS.map(c => {
+    const box = el('div', 'help-command');
+    box.appendChild(el('div', 'help-command-name', c.name));
+    box.appendChild(el('div', 'help-command-desc', c.desc));
+    return box;
+  }));
+  $('helpModal').classList.add('show');
+}
+
+function clearImagePreview() {
+  selectedImage = null;
+  $('imagePreviewContainer').replaceChildren();
+  $('imageInput').value = '';
+}
+
+function sendMessage() {
+  const text = $('msgInput').value.trim();
+  if (!text && !selectedImage) return;
+  if (text === '/help' && !selectedImage) { $('msgInput').value = ''; showHelp(); return; }
+  if (!connected) { notify('⚠️', 'Not connected yet'); return; }
+
+  const payload = { text, imageUrl: selectedImage || undefined, replyTo: replyTo ? replyTo.id : undefined };
+  if (chatType === 'dm') {
+    if (!curDM) return;
+    send({ type: 'privateMessage', chatId: curDM, ...payload });
+  } else {
+    send({ type: 'message', channel: curChan, ...payload });
+  }
+
+  $('msgInput').value = '';
+  clearImagePreview();
+  clearTimeout(typingTimer);
+  sendTyping(false);
+  replyTo = null;
+  $('replyBar').classList.remove('show');
+  $('replyText').textContent = '';
+}
+
+/* ---------- voice (WebRTC mesh, signalling through the server) ---------- */
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+function updateVoiceUI(ch) {
+  const C = cap(ch);
+  const list = voiceChannelData[ch] || [];
+  $('voiceStatus' + C).textContent = `${list.length} user${list.length === 1 ? '' : 's'}`;
+  const box = $('voiceParticipants' + C);
+  box.replaceChildren(...list.map(u => el('div', 'voice-participant', u)));
+  box.classList.toggle('show', list.length > 0);
+  const inThis = currentVoiceChannel === ch;
+  $('voiceControls' + C).style.display = inThis ? 'flex' : 'none';
+  document.querySelector(`.voice-channel[data-voice="${ch}"]`).classList.toggle('active', inThis);
+  const mute = $('muteVoice' + C);
+  mute.textContent = inThis && isMuted ? '🔇 Unmute' : '🎤 Mute';
+  mute.classList.toggle('active', inThis && isMuted);
+}
+function updateAllVoiceUI() { ['general', 'chill', 'gaming'].forEach(updateVoiceUI); }
+
+async function joinVoice(ch) {
+  if (voiceBusy || currentVoiceChannel === ch || !connected) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    notify('❌', 'Voice chat needs a secure (https) page and a microphone.');
+    return;
+  }
+  voiceBusy = true;
+  try {
+    if (currentVoiceChannel) leaveVoice();
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch {
+      notify('❌', 'Could not access your microphone.');
+      return;
+    }
+    currentVoiceChannel = ch;
+    isMuted = false;
+    send({ type: 'joinVoice', channel: ch });
+    updateAllVoiceUI();
+  } finally {
+    voiceBusy = false;
+  }
+}
+
+function leaveVoice() {
+  if (!currentVoiceChannel) return;
+  send({ type: 'leaveVoice', channel: currentVoiceChannel });
+  cleanupVoice();
+}
+
+function cleanupVoice() {
+  Object.keys(peers).forEach(closePeer);
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  localStream = null;
+  currentVoiceChannel = null;
+  isMuted = false;
+  updateAllVoiceUI();
+}
+
+function toggleMute() {
+  if (!localStream) return;
+  isMuted = !isMuted;
+  localStream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
+  updateAllVoiceUI();
+}
+
+function closePeer(name) {
+  const p = peers[name];
+  if (!p) return;
+  try { p.pc.close(); } catch { /* ignore */ }
+  p.audio.srcObject = null;
+  p.audio.remove();
+  delete peers[name];
+}
+
+function createPeer(name, initiator) {
+  closePeer(name);
+  const pc = new RTCPeerConnection(RTC_CONFIG);
+  const audio = document.createElement('audio');
+  audio.autoplay = true;
+  $('remoteAudio').appendChild(audio);
+  const peer = { pc, audio, pending: [], remoteSet: false };
+  peers[name] = peer;
+
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  pc.onicecandidate = e => { if (e.candidate) send({ type: 'voiceIceCandidate', to: name, candidate: e.candidate }); };
+  pc.ontrack = e => { audio.srcObject = e.streams[0]; };
+
+  if (initiator) {
+    pc.createOffer()
+      .then(o => pc.setLocalDescription(o))
+      .then(() => send({ type: 'voiceOffer', to: name, offer: pc.localDescription }))
+      .catch(err => console.error('Offer failed:', err));
+  }
+  return peer;
+}
+
+async function flushCandidates(peer) {
+  peer.remoteSet = true;
+  for (const c of peer.pending.splice(0)) {
+    try { await peer.pc.addIceCandidate(c); } catch (e) { console.error('ICE error:', e); }
+  }
+}
+
+async function handleVoiceOffer(d) {
+  if (!currentVoiceChannel || d.channel !== currentVoiceChannel || !localStream) return;
+  const peer = createPeer(d.from, false);
+  try {
+    await peer.pc.setRemoteDescription(d.offer);
+    await flushCandidates(peer);
+    const answer = await peer.pc.createAnswer();
+    await peer.pc.setLocalDescription(answer);
+    send({ type: 'voiceAnswer', to: d.from, answer: peer.pc.localDescription });
+  } catch (e) { console.error('Answering offer failed:', e); }
+}
+
+async function handleVoiceAnswer(d) {
+  const peer = peers[d.from];
+  if (!peer) return;
+  try {
+    await peer.pc.setRemoteDescription(d.answer);
+    await flushCandidates(peer);
+  } catch (e) { console.error('Applying answer failed:', e); }
+}
+
+async function handleIceCandidate(d) {
+  const peer = peers[d.from];
+  if (!peer) return;
+  if (!peer.remoteSet) { peer.pending.push(d.candidate); return; }
+  try { await peer.pc.addIceCandidate(d.candidate); } catch (e) { console.error('ICE error:', e); }
+}
+
+/* ---------- UI wiring ---------- */
+$('loginBtn').onclick = login;
+$('adminToggle').onclick = () => showAdminField(!adminFieldShown());
+['usernameInput', 'pwdInput'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') login(); }));
+
+// rules popup
+$('rulesList').replaceChildren(...RULES.map(([title, text], i) => {
+  const box = el('div', 'rule');
+  box.appendChild(el('b', null, `${i + 1}. ${title}`));
+  box.appendChild(document.createElement('br'));
+  box.appendChild(document.createTextNode(text));
+  return box;
+}));
+$('acceptRules').onclick = acceptRules;
+$('declineRules').onclick = cancelRules;
+$('rulesModal').addEventListener('click', e => { if (e.target === $('rulesModal')) cancelRules(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('rulesModal').classList.contains('show')) cancelRules(); });
+
+$('sendBtn').onclick = sendMessage;
+$('msgInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+$('msgInput').addEventListener('input', () => {
+  clearTimeout(typingTimer);
+  if ($('msgInput').value) {
+    sendTyping(true);
+    typingTimer = setTimeout(() => sendTyping(false), 3000);
+  } else sendTyping(false);
+});
+
+document.querySelectorAll('.channel[data-channel]').forEach(c => { c.onclick = () => switchChan(c.dataset.channel); });
+document.querySelectorAll('.voice-channel').forEach(v => { v.onclick = () => joinVoice(v.dataset.voice); });
+['general', 'chill', 'gaming'].forEach(ch => {
+  const C = cap(ch);
+  $('muteVoice' + C).onclick = toggleMute;
+  $('leaveVoice' + C).onclick = leaveVoice;
+});
+
+// custom rooms
+function joinRoomFromInput() {
+  const code = $('roomCodeInput').value;
+  if (!code.trim()) return;
+  requestRoom(code, false);
+  $('roomCodeInput').value = '';
+}
+$('joinRoomBtn').onclick = joinRoomFromInput;
+$('roomCodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoomFromInput(); });
+$('newRoomBtn').onclick = () => requestRoom(randomRoomCode(), false);
+$('copyInvite').onclick = copyInvite;
+
+$('imageBtn').onclick = () => $('imageInput').click();
+$('imageInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    selectedImage = await uploadImage(file);
+  } catch (err) {
+    notify('❌', err.message);
+    clearImagePreview();
+    return;
+  }
+  const preview = el('div', 'image-preview');
+  const img = el('img'); img.src = selectedImage; img.alt = 'Selected preview';
+  const close = el('button', 'image-preview-close', '×'); close.title = 'Remove';
+  close.onclick = clearImagePreview;
+  preview.append(img, close);
+  $('imagePreviewContainer').replaceChildren(preview);
+});
+
+$('cancelReply').onclick = () => { replyTo = null; $('replyBar').classList.remove('show'); $('replyText').textContent = ''; };
+$('imageModal').onclick = () => $('imageModal').classList.remove('show');
+$('closeHelp').onclick = () => $('helpModal').classList.remove('show');
+$('helpModal').onclick = e => { if (e.target === $('helpModal')) $('helpModal').classList.remove('show'); };
+
+$('rightToggle').onclick = () => {
+  const collapsed = $('rightSidebar').classList.toggle('collapsed');
+  $('rightToggle').textContent = collapsed ? '◀' : '▶';
+};
+
+// settings panel
+$('settingsBtn').onclick = () => { $('adminPanel').classList.remove('show'); updateNotifStatus(); $('settingsPanel').classList.toggle('show'); };
+$('closeSettings').onclick = () => $('settingsPanel').classList.remove('show');
+function changeSetting(fn) { fn(); saveSettings(); applySettings(); render(); }
+$('notifOffToggle').onclick = () => changeSetting(() => { userSettings.notifications = 'off'; });
+$('notifDMToggle').onclick = () => changeSetting(() => { userSettings.notifications = 'dm'; });
+$('notifAllToggle').onclick = () => changeSetting(() => { userSettings.notifications = 'all'; });
+$('profanityToggle').onclick = () => changeSetting(() => { userSettings.profanityFilter = !userSettings.profanityFilter; });
+$('groupingToggle').onclick = () => changeSetting(() => { userSettings.messageGrouping = !userSettings.messageGrouping; });
+$('themeToggle').onclick = () => changeSetting(() => { userSettings.lightTheme = !userSettings.lightTheme; });
+$('enableBrowserNotif').onclick = async () => {
+  if (Notification.permission === 'default') await requestNotifPerm();
+  updateNotifStatus();
+  if (Notification.permission === 'granted') showBrowserNotif('The Chet', 'Notifications are working 🎉', true);
+};
+document.querySelectorAll('.color-option').forEach(o => {
+  o.onclick = () => {
+    changeSetting(() => { userSettings.profileColor = o.dataset.color; });
+    send({ type: 'updateProfile', profileColor: userSettings.profileColor });
+  };
+});
+
+// admin panel
+$('adminBtn').onclick = () => {
+  $('settingsPanel').classList.remove('show');
+  const panel = $('adminPanel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) send({ type: 'adminGetBanList' });
+};
+$('closeAdmin').onclick = () => $('adminPanel').classList.remove('show');
+
+document.querySelectorAll('.ap-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.ap-tab').forEach(t => t.classList.toggle('active', t === tab));
+    document.querySelectorAll('.ap-section').forEach(s => s.classList.toggle('active', s.dataset.section === tab.dataset.tab));
+    if (tab.dataset.tab === 'bans') send({ type: 'adminGetBanList' });
+  };
+});
+
+document.querySelectorAll('.ban-type-btn').forEach(b => {
+  b.onclick = () => {
+    selectedBanType = b.dataset.type;
+    document.querySelectorAll('.ban-type-btn').forEach(x => x.classList.toggle('selected', x === b));
+  };
+});
+$('modAction').onchange = () => { $('banTypeSelector').style.display = $('modAction').value === 'ban' ? 'flex' : 'none'; };
+
+$('execMod').onclick = () => {
+  const target = $('modUser').value;
+  if (!target) { notify('❌', 'Select a user first'); return; }
+  const duration = parseInt($('modDur').value, 10) || 60;
+  const reason = $('modReason').value.trim();
+  const byAction = {
+    kick: { type: 'adminKick' },
+    timeout: { type: 'adminTimeout', duration },
+    mute: { type: 'adminForceMute', duration },
+    ban: { type: 'adminBan', banType: selectedBanType },
+    warning: { type: 'adminWarning' }
+  };
+  send({ ...byAction[$('modAction').value], targetUsername: target, reason });
+};
+
+document.querySelectorAll('.troll-btn[data-troll]').forEach(b => {
+  b.onclick = () => {
+    const target = $('trollUser').value;
+    if (!target) { notify('❌', 'Select a user first'); return; }
+    if (b.dataset.troll === 'forceDisconnect') send({ type: 'adminForceDisconnect', targetUsername: target });
+    else send({ type: 'adminEffect', effect: b.dataset.troll, targetUsername: target });
+  };
+});
+$('confettiAll').onclick = () => send({ type: 'adminConfetti' });
+$('sendBroadcast').onclick = () => {
+  const message = $('broadcastMsg').value.trim();
+  if (!message) return;
+  send({ type: 'adminBroadcast', message });
+  $('broadcastMsg').value = '';
+};
+$('refreshBans').onclick = () => send({ type: 'adminGetBanList' });
+$('applySlowMode').onclick = () => send({ type: 'adminSlowMode', enabled: $('slowEnabled').checked, duration: parseInt($('slowDur').value, 10) || 5 });
+$('clearChatBtn').onclick = () => {
+  const channel = $('clearChan').value;
+  if (confirm(`Delete all messages in #${channel}?`)) send({ type: 'adminClearChat', channel });
+};
+
+/* ---------- startup ---------- */
+window.addEventListener('load', () => {
+  loadSettings();
+  loadRooms();
+  applySettings();
+  updateAllVoiceUI();
+  updateNotifStatus();
+  registerWorker();
+  savedRooms.forEach(addRoomItem);
+
+  const saved = store.get('username');
+  if (saved) $('usernameInput').value = saved;
+
+  const params = new URLSearchParams(location.search);
+  const invite = normRoom(params.get('room'));
+  if (invite.length >= 3) pendingInviteRoom = invite;
+  if (params.get('guest') === 'true') {
+    $('usernameInput').value = 'Guest';
+    login();
+  }
+});
+window.addEventListener('beforeunload', () => { if (username) store.set('username', username); });
+</script>
+</body>
+</html>
