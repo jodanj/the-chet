@@ -2,9 +2,10 @@
  * The Chet - Cloudflare Worker + Durable Object chat server.
  *
  * Secrets (set with `npx wrangler secret put NAME`, or in .dev.vars for local dev):
- *   OWNER_PASSWORD, ADMIN_PASSWORD, VIP_PASSWORD
+ *   OWNER_PASSWORD, ADMIN_PASSWORD, VIP_PASSWORD, GIPHY_API_KEY
  * A role is granted when the password typed into the login form matches one of them.
  * If a secret is not set, that role simply cannot be obtained.
+ * GIPHY_API_KEY (free at developers.giphy.com) powers the GIF button.
  *
  * Custom rooms: any channel named "room:<code>" is a private room. Only sockets that
  * have sent `joinRoom` for that code can read it, post in it, or receive its events.
@@ -21,8 +22,18 @@ const EFFECTS = new Set([
 const MAX_CHANNEL_HISTORY = 100;
 const MAX_DM_HISTORY = 200;
 const MAX_TEXT = 2000;
-const MAX_IMAGE_CHARS = 120000; // keeps every stored message under the 128 KiB value limit
-const MAX_FRAME_CHARS = 300000;
+const MAX_IMAGE_CHARS = 700000;  // ~500 KB image as base64 (SQLite-backed objects store values up to 2 MB)
+const MAX_FRAME_CHARS = 1000000; // WebSocket messages are capped at 1 MiB
+
+// Only GIPHY links (from the GIF picker) are accepted as remote images.
+const GIF_URL_RE = /^https:\/\/(?:media\d*|i)\.giphy\.com\/[\w\-./%]+(?:\?[\w\-=&%.]*)?$/;
+
+// Auto slow mode: 9+ messages in 3 seconds -> one message per 3 seconds for 5 minutes.
+const SPAM_MESSAGES = 9, SPAM_WINDOW_MS = 3000;
+const AUTO_SLOW_MS = 5 * 60 * 1000, AUTO_SLOW_GAP_MS = 3000;
+
+const MAX_BLOCKS = 100;
+const BAN_MODES = ['full', 'mute', 'dm'];
 
 const ROOM_RE = /^room:[a-z0-9-]{3,20}$/;
 const MAX_ROOMS_PER_USER = 10;
@@ -95,10 +106,15 @@ export class ChatRoom {
     this.userWarnings = new Map();    // lowercase username -> count
     this.userProfiles = new Map();    // lowercase username -> { color }
     this.slowMode = { enabled: false, duration: 5 };
+    this.restrictedIPs = new Map();   // ip -> 'mute' | 'dm'
+    this.restrictedUsers = new Map(); // lowercase username -> 'mute' | 'dm'
+    this.blocks = new Map();          // blocker uuid -> Map(blocked uuid -> username)
 
     // Short-lived state: fine to lose when the object hibernates.
     this.lastMessageAt = new Map();   // lowercase username -> ms
     this.mutedUntil = new Map();      // lowercase username -> ms
+    this.recentMsgs = new Map();      // lowercase username -> [timestamps]
+    this.autoSlowUntil = new Map();   // lowercase username -> ms
     this.lastTs = 0;
 
     // Load persisted state before any request is handled.
@@ -115,6 +131,9 @@ export class ChatRoom {
       this.userWarnings = new Map(Object.entries(meta.userWarnings || {}));
       this.userProfiles = new Map(Object.entries(meta.userProfiles || {}));
       this.dmParticipants = new Map(Object.entries(meta.dmParticipants || {}));
+      this.restrictedIPs = new Map(Object.entries(meta.restrictedIPs || {}));
+      this.restrictedUsers = new Map(Object.entries(meta.restrictedUsers || {}));
+      this.blocks = new Map(Object.entries(meta.blocks || {}).map(([k, o]) => [k, new Map(Object.entries(o))]));
       if (meta.slowMode) this.slowMode = meta.slowMode;
     }
 
@@ -136,6 +155,9 @@ export class ChatRoom {
       userWarnings: Object.fromEntries(this.userWarnings),
       userProfiles: Object.fromEntries(this.userProfiles),
       dmParticipants: Object.fromEntries(this.dmParticipants),
+      restrictedIPs: Object.fromEntries(this.restrictedIPs),
+      restrictedUsers: Object.fromEntries(this.restrictedUsers),
+      blocks: Object.fromEntries([...this.blocks].map(([k, m]) => [k, Object.fromEntries(m)])),
       slowMode: this.slowMode
     }));
   }
@@ -341,6 +363,9 @@ export class ChatRoom {
       case 'toggleReaction': return this.onToggleReaction(data, user);
       case 'typing': return this.onTyping(ws, data, user);
       case 'updateProfile': return this.onUpdateProfile(data, user);
+      case 'deleteMessage': return this.onDeleteMessage(ws, data, user);
+      case 'blockUser': return this.onBlockUser(ws, data, user);
+      case 'unblockUser': return this.onUnblockUser(ws, data, user);
 
       case 'joinRoom': return this.onJoinRoom(ws, data, user);
       case 'leaveRoom': return this.onLeaveRoom(ws, data, user);
@@ -357,6 +382,7 @@ export class ChatRoom {
       case 'adminBan': return this.onAdminBan(ws, data, user);
       case 'adminUnban': return this.onAdminUnban(ws, data);
       case 'adminUnbanIP': return this.onAdminUnbanIP(ws, data);
+      case 'adminUnrestrict': return this.onAdminUnrestrict(ws, data);
       case 'adminWarning': return this.onAdminWarning(ws, data, user);
       case 'adminDeleteMessage': return this.onAdminDeleteMessage(ws, data, user);
       case 'adminGetBanList': return this.onAdminGetBanList(ws);
@@ -428,6 +454,7 @@ export class ChatRoom {
 
     send(ws, { type: 'joined', uuid, username: finalName, isOwner, isAdmin, isVIP });
     send(ws, { type: 'dmList', chats: this.dmListFor(uuid) });
+    send(ws, { type: 'blockList', users: [...(this.blocks.get(uuid)?.values() || [])] });
     for (const ch of VOICE_CHANNELS) {
       send(ws, { type: 'voiceUsers', channel: ch, users: this.voiceUsers(ch) });
     }
@@ -512,15 +539,19 @@ export class ChatRoom {
   }
 
   // Validates text + image. Returns { text, imageUrl } or null (after telling the sender why).
+  // Images are either uploaded files (data: URLs) or GIPHY links from the GIF picker.
   readContent(ws, data) {
     const text = typeof data.text === 'string' ? data.text.slice(0, MAX_TEXT) : '';
     let imageUrl = null;
     if (data.imageUrl != null) {
-      if (typeof data.imageUrl !== 'string' || !data.imageUrl.startsWith('data:image/') || data.imageUrl.length > MAX_IMAGE_CHARS) {
+      const u = data.imageUrl;
+      const okData = typeof u === 'string' && u.startsWith('data:image/') && u.length <= MAX_IMAGE_CHARS;
+      const okGif = typeof u === 'string' && u.length <= 500 && GIF_URL_RE.test(u);
+      if (!okData && !okGif) {
         send(ws, { type: 'error', message: 'Image is invalid or too large' });
         return null;
       }
-      imageUrl = data.imageUrl;
+      imageUrl = u;
     }
     if (!text.trim() && !imageUrl) return null;
     return { text, imageUrl };
@@ -536,11 +567,50 @@ export class ChatRoom {
     return true;
   }
 
+  // 'mute' | 'dm' | null (checks both the user's IP and username).
+  restrictionOf(user) {
+    const a = this.restrictedIPs.get(user.ip);
+    const b = this.restrictedUsers.get(lc(user.username));
+    return a === 'mute' || b === 'mute' ? 'mute' : a || b || null;
+  }
+
+  // 'mute' blocks everything; 'dm' blocks channels/rooms but allows DMs.
+  checkRestricted(ws, user, isDM) {
+    const r = this.restrictionOf(user);
+    if (r === 'mute' || (r === 'dm' && !isDM)) {
+      send(ws, { type: 'error', message: r === 'mute' ? 'You are muted and cannot send messages' : 'You can only send direct messages' });
+      return false;
+    }
+    return true;
+  }
+
+  // Auto slow mode for people who flood the chat. Staff and VIPs are exempt.
+  checkSpam(ws, user) {
+    if (isStaff(user) || user.isVIP) return true;
+    const key = lc(user.username);
+    const now = Date.now();
+    const recent = (this.recentMsgs.get(key) || []).filter((t) => now - t < SPAM_WINDOW_MS);
+    const until = this.autoSlowUntil.get(key) || 0;
+    if (until > now && recent.length && now - recent[recent.length - 1] < AUTO_SLOW_GAP_MS) {
+      const wait = Math.ceil((AUTO_SLOW_GAP_MS - (now - recent[recent.length - 1])) / 1000);
+      send(ws, { type: 'error', message: `Slow mode: wait ${wait}s between messages` });
+      return false;
+    }
+    recent.push(now);
+    this.recentMsgs.set(key, recent);
+    if (recent.length >= SPAM_MESSAGES && until <= now) {
+      this.autoSlowUntil.set(key, now + AUTO_SLOW_MS);
+      send(ws, { type: 'error', message: 'You were sending messages too fast. Slow mode is on for 5 minutes.' });
+    }
+    return true;
+  }
+
   onMessage(ws, data, user) {
     if (!validChannel(data.channel) || !this.canAccessChannel(user, data.channel)) return;
     const content = this.readContent(ws, data);
     if (!content) return;
     if (!this.checkMuted(ws, user)) return;
+    if (!this.checkRestricted(ws, user, false)) return;
 
     const key = lc(user.username);
     if (this.slowMode.enabled && !isStaff(user)) {
@@ -550,6 +620,7 @@ export class ChatRoom {
         return;
       }
     }
+    if (!this.checkSpam(ws, user)) return;
     this.lastMessageAt.set(key, Date.now());
 
     const message = this.buildMessage(user, data, content.text, content.imageUrl);
@@ -571,6 +642,21 @@ export class ChatRoom {
     const content = this.readContent(ws, data);
     if (!content) return;
     if (!this.checkMuted(ws, user)) return;
+    if (!this.checkRestricted(ws, user, true)) return;
+
+    // Blocking works both ways: neither person can send while a block exists.
+    const other = this.dmParticipants.get(data.chatId).find((p) => p.uuid !== user.uuid);
+    if (other) {
+      if (this.isBlockedBy(other.uuid, user.uuid)) {
+        send(ws, { type: 'error', message: "You can't send messages to this user" });
+        return;
+      }
+      if (this.isBlockedBy(user.uuid, other.uuid)) {
+        send(ws, { type: 'error', message: 'You blocked this user. Unblock them to send messages.' });
+        return;
+      }
+    }
+    if (!this.checkSpam(ws, user)) return;
 
     const message = this.buildMessage(user, data, content.text, content.imageUrl);
     message.chatId = data.chatId;
@@ -585,6 +671,29 @@ export class ChatRoom {
 
     const uuids = this.dmParticipants.get(data.chatId).map((p) => p.uuid);
     this.sendToUuids(uuids, { type: 'privateMessage', message });
+  }
+
+  // Anyone can delete their own messages (channels, rooms and DMs).
+  onDeleteMessage(ws, data, user) {
+    const mine = (m) => m && lc(m.author) === lc(user.username);
+    if (data.isPrivate) {
+      if (!this.isParticipant(data.chatId, user.uuid)) return;
+      const list = this.privateChats.get(data.chatId) || [];
+      const i = list.findIndex((m) => m.id === data.messageId);
+      if (i === -1 || !mine(list[i])) return;
+      const [removed] = list.splice(i, 1);
+      bg(this.ctx.storage.delete(dmKey(removed)));
+      this.sendToUuids(this.dmParticipants.get(data.chatId).map((p) => p.uuid),
+        { type: 'privateMessageDeleted', chatId: data.chatId, messageId: removed.id });
+      return;
+    }
+    if (!validChannel(data.channel) || !this.canAccessChannel(user, data.channel)) return;
+    const list = this.chanList(data.channel) || [];
+    const i = list.findIndex((m) => m.id === data.messageId);
+    if (i === -1 || !mine(list[i])) return;
+    const [removed] = list.splice(i, 1);
+    bg(this.ctx.storage.delete(chKey(removed)));
+    this.broadcastChannel(data.channel, { type: 'messageDeleted', messageId: removed.id, channel: data.channel });
   }
 
   onGetHistory(ws, data, user) {
@@ -650,12 +759,57 @@ export class ChatRoom {
     this.saveMeta();
   }
 
+  // ----- blocking -----
+
+  isBlockedBy(blockerUuid, otherUuid) {
+    return !!this.blocks.get(blockerUuid)?.has(otherUuid);
+  }
+
+  sendBlockList(ws, user) {
+    send(ws, { type: 'blockList', users: [...(this.blocks.get(user.uuid)?.values() || [])] });
+  }
+
+  onBlockUser(ws, data, user) {
+    const t = this.findUser(data.targetUsername);
+    if (!t || t.user.uuid === user.uuid) {
+      send(ws, { type: 'error', message: 'User not online' });
+      return;
+    }
+    const mine = this.blocks.get(user.uuid) || new Map();
+    if (mine.size >= MAX_BLOCKS && !mine.has(t.user.uuid)) {
+      send(ws, { type: 'error', message: 'Your block list is full' });
+      return;
+    }
+    mine.set(t.user.uuid, t.user.username);
+    this.blocks.set(user.uuid, mine);
+    this.saveMeta();
+    this.sendBlockList(ws, user);
+  }
+
+  onUnblockUser(ws, data, user) {
+    const mine = this.blocks.get(user.uuid);
+    if (!mine) return;
+    const name = lc(data.username ?? '');
+    for (const [id, n] of mine) if (lc(n) === name) mine.delete(id);
+    if (!mine.size) this.blocks.delete(user.uuid);
+    this.saveMeta();
+    this.sendBlockList(ws, user);
+  }
+
   // ----- direct message requests -----
 
   onPrivateChatRequest(ws, data, user) {
     const target = this.findUser(data.targetUsername);
     if (!target || target.user.uuid === user.uuid) {
       send(ws, { type: 'error', message: 'User not online' });
+      return;
+    }
+    if (this.isBlockedBy(target.user.uuid, user.uuid)) {
+      send(ws, { type: 'error', message: "You can't message this user" });
+      return;
+    }
+    if (this.isBlockedBy(user.uuid, target.user.uuid)) {
+      send(ws, { type: 'error', message: 'You blocked this user. Unblock them first.' });
       return;
     }
 
@@ -775,10 +929,15 @@ export class ChatRoom {
     this.ok(ws, `${verb[0].toUpperCase()}${verb.slice(1)} ${t.user.username} for ${duration}s`);
   }
 
+  // Ban modes:
+  //   full = kicked now and can't rejoin (the original behaviour)
+  //   mute = infinite mute: can't send anything, including DMs
+  //   dm   = can't type in channels/rooms, but DMs still work
   onAdminBan(ws, data, admin) {
     const name = cleanName(data.targetUsername);
     if (!name) return;
     const banType = ['username', 'ip', 'both'].includes(data.banType) ? data.banType : 'ip';
+    const mode = BAN_MODES.includes(data.mode) ? data.mode : 'full';
     const banName = banType !== 'ip';
     const banIp = banType !== 'username';
 
@@ -792,16 +951,33 @@ export class ChatRoom {
       return;
     }
 
-    if (banName) this.bannedUsers.add(lc(name));
-    if (t && banIp && t.user.ip && t.user.ip !== 'unknown') this.bannedIPs.add(t.user.ip);
-    this.saveMeta();
+    const reason = cleanReason(data.reason);
+    const ip = t && t.user.ip && t.user.ip !== 'unknown' ? t.user.ip : null;
 
-    if (t) {
-      const reason = cleanReason(data.reason);
-      send(t.ws, { type: 'banned', message: `You have been banned${reason ? ': ' + reason : ''}` });
-      try { t.ws.close(4003, 'banned'); } catch { /* ignore */ }
+    if (mode === 'full') {
+      if (banName) this.bannedUsers.add(lc(name));
+      if (banIp && ip) this.bannedIPs.add(ip);
+      this.saveMeta();
+      if (t) {
+        send(t.ws, { type: 'banned', message: `You have been banned${reason ? ': ' + reason : ''}` });
+        try { t.ws.close(4003, 'banned'); } catch { /* ignore */ }
+      }
+      this.ok(ws, `Banned ${name}`);
+      return;
     }
-    this.ok(ws, `Banned ${name}`);
+
+    if (banName) this.restrictedUsers.set(lc(name), mode);
+    if (banIp && ip) this.restrictedIPs.set(ip, mode);
+    this.saveMeta();
+    if (t) {
+      send(t.ws, {
+        type: 'restricted',
+        message: (mode === 'mute'
+          ? 'You have been muted and can no longer send messages'
+          : 'You can no longer chat in channels or rooms, but you can still send DMs') + (reason ? ': ' + reason : '')
+      });
+    }
+    this.ok(ws, `${mode === 'mute' ? 'Muted' : 'Chat-blocked'} ${name} (until removed in the Bans tab)`);
   }
 
   onAdminUnban(ws, data) {
@@ -815,6 +991,15 @@ export class ChatRoom {
     this.bannedIPs.delete(data.ip);
     this.saveMeta();
     this.ok(ws, `Unbanned IP ${data.ip}`);
+    this.onAdminGetBanList(ws);
+  }
+
+  onAdminUnrestrict(ws, data) {
+    if (data.kind === 'ip') this.restrictedIPs.delete(data.value);
+    else if (data.kind === 'user') this.restrictedUsers.delete(lc(data.value ?? ''));
+    else return;
+    this.saveMeta();
+    this.ok(ws, `Removed restriction on ${data.value}`);
     this.onAdminGetBanList(ws);
   }
 
@@ -842,7 +1027,11 @@ export class ChatRoom {
   }
 
   onAdminGetBanList(ws) {
-    send(ws, { type: 'banList', bannedUsers: [...this.bannedUsers], bannedIPs: [...this.bannedIPs] });
+    const restricted = [
+      ...[...this.restrictedUsers].map(([value, mode]) => ({ kind: 'user', value, mode })),
+      ...[...this.restrictedIPs].map(([value, mode]) => ({ kind: 'ip', value, mode }))
+    ];
+    send(ws, { type: 'banList', bannedUsers: [...this.bannedUsers], bannedIPs: [...this.bannedIPs], restricted });
   }
 
   onAdminBroadcast(ws, data) {
@@ -889,12 +1078,49 @@ export class ChatRoom {
   }
 }
 
+// ---------- GIF search (the GIPHY key stays on the server) ----------
+
+const json = (body, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'public, max-age=300'
+  }
+});
+
+async function searchGifs(url, env) {
+  if (!env.GIPHY_API_KEY) return json({ error: 'GIF search is not set up yet' }, 503);
+  const q = (url.searchParams.get('q') || '').trim().slice(0, 50);
+  const api = new URL('https://api.giphy.com/v1/gifs/' + (q ? 'search' : 'trending'));
+  api.searchParams.set('api_key', env.GIPHY_API_KEY);
+  api.searchParams.set('limit', '24');
+  api.searchParams.set('rating', 'pg-13');
+  if (q) api.searchParams.set('q', q);
+  try {
+    const r = await fetch(api);
+    if (!r.ok) return json({ error: 'GIF service unavailable' }, 502);
+    const body = await r.json();
+    const results = (body.data || []).map((g) => ({
+      id: g.id,
+      title: g.title || '',
+      preview: g.images?.fixed_width_small?.url || g.images?.fixed_width?.url,
+      url: g.images?.fixed_height?.url || g.images?.original?.url
+    })).filter((g) => g.preview && g.url);
+    return json({ results });
+  } catch {
+    return json({ error: 'GIF service unavailable' }, 502);
+  }
+}
+
 // ---------- Worker entry point ----------
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const wantsSocket = request.headers.get('Upgrade') === 'websocket';
+
+    if (url.pathname === '/api/gifs') return searchGifs(url, env);
 
     // The page connects to /ws. (A plain "/" request is served by static assets, so it
     // can never be used for the upgrade.)
