@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>The Chet</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>💀</text></svg>" id="favicon">
 <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
@@ -94,19 +94,10 @@ body.light-theme .room-input{background:#ebedef;color:#2e3338}
 .users-section{flex:1;overflow-y:auto;padding:8px}
 .users-section-header{padding:8px 12px;color:#96989d;font-size:12px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
 .online-count{color:#3ba55d;font-size:11px}
-.role-header{font-size:11px;font-weight:600;text-transform:uppercase;padding:8px 12px 4px}
-.owner-header{color:#e74c3c}
-.admin-header{color:#faa61a}
-.vip-header{color:#f47fff}
-.guest-header{color:#96989d}
 .user-item{padding:6px 12px;color:#dcddde;font-size:13px;display:flex;align-items:center;justify-content:space-between;border-radius:4px;margin:0 4px;transition:background .15s;cursor:default}
 .user-item:hover{background:#3a3c42}
 .user-name{display:flex;align-items:center;gap:6px}
 .user-name::before{content:'●';color:#3ba55d;font-size:8px}
-.role-badge{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;color:#fff;margin-left:4px}
-.role-badge.owner{background:linear-gradient(135deg,#e74c3c,#c0392b)}
-.role-badge.admin{background:linear-gradient(135deg,#faa61a,#ff8c00)}
-.role-badge.vip{background:linear-gradient(135deg,#f47fff,#ff6ec7)}
 .dm-btn{opacity:0;background:#5865f2;color:#fff;border:none;padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer;transition:opacity .2s}
 .user-item:hover .dm-btn{opacity:1}
 .user-area{height:52px;background:#292b2f;padding:0 8px;display:flex;align-items:center;transition:background .2s;position:relative;gap:8px}
@@ -334,6 +325,74 @@ body.light-theme .user-display-name{color:#060607}
 .image-modal{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:2500;display:none;align-items:center;justify-content:center;cursor:pointer}
 .image-modal.show{display:flex}
 .image-modal img{max-width:90vw;max-height:90vh;border-radius:8px}
+
+/* --- role colours on the user list (just coloured text, no tags or emoji) --- */
+.user-name.owner{color:#e74c3c}
+.user-name.admin{color:#faa61a}
+.user-name.vip{color:#f47fff}
+.avatar-badge{display:none!important}
+.user-actions{display:flex;gap:4px}
+.block-btn{background:#4f545c}
+
+/* --- login particles --- */
+#particles{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+.login-title,#loginCard{position:relative;z-index:1}
+
+/* --- GIF picker --- */
+.input-area{position:relative}
+#gifBtn{font-size:13px;font-weight:700;letter-spacing:.5px}
+#gifPanel{position:absolute;left:16px;bottom:100%;width:420px;max-width:calc(100% - 32px);height:360px;max-height:60vh;background:#2f3136;border:1px solid #202225;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none;flex-direction:column;z-index:50}
+#gifPanel.show{display:flex}
+#gifSearch{margin:8px;padding:10px;border:none;border-radius:6px;background:#40444b;color:#fff;font-size:14px;outline:none}
+#gifGrid{flex:1;overflow-y:auto;padding:0 8px 8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;align-content:start}
+#gifGrid .empty{grid-column:1/-1}
+.gif-item{width:100%;height:90px;object-fit:cover;border-radius:4px;cursor:pointer;background:#202225}
+.gif-item:hover{outline:2px solid #5865f2}
+.gif-credit{padding:4px 8px;font-size:10px;color:#72767d;text-align:right}
+body.light-theme #gifPanel{background:#fff;border-color:#e3e5e8}
+body.light-theme #gifSearch{background:#ebedef;color:#2e3338}
+
+/* --- mobile menu buttons (hidden on desktop) --- */
+.mob-btn{display:none;width:40px;height:40px;flex-shrink:0;align-items:center;justify-content:center;background:none;border:none;color:#96989d;font-size:20px;border-radius:6px;cursor:pointer}
+.mob-btn:active{background:#3a3c42}
+body.light-theme .mob-btn{color:#4f5660}
+.drawer-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100}
+
+/* --- phones --- */
+@media (max-width:768px){
+  body,.container{height:100vh;height:100dvh}
+  .sidebar{position:fixed;top:0;bottom:0;left:0;width:82vw;max-width:300px;z-index:1200;transform:translateX(-100%);transition:transform .25s}
+  .sidebar.right{left:auto;right:0;border-left:1px solid #202225;transform:translateX(100%);margin-right:0!important}
+  .sidebar.drawer-open,.sidebar.right.drawer-open{transform:none}
+  .right-toggle{display:none}
+  .drawer-backdrop.show{display:block}
+  .mob-btn{display:flex}
+  .user-area{padding-bottom:env(safe-area-inset-bottom);min-height:52px;height:auto}
+
+  .chat-header{padding:0 8px;gap:8px}
+  .current-channel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .header-actions .room-btn{padding:6px 8px;font-size:11px}
+  .messages{padding:12px 10px}
+  .message:hover{margin-left:0;margin-right:0;padding-left:0;padding-right:0}
+  .msg-image{max-width:100%}
+  .msg-actions{right:4px}
+  .message.tapped .msg-actions{display:flex}
+  .msg-action{padding:10px 12px}
+
+  .input-area{padding:0 8px calc(8px + env(safe-area-inset-bottom))}
+  .input-wrapper{padding:8px}
+  .msg-input,#usernameInput,#pwdInput,.room-input,.form-input,.form-select,#gifSearch{font-size:16px}
+  #gifPanel{left:8px;right:8px;width:auto;max-width:none;height:50vh}
+
+  .channel,.voice-channel{padding:12px}
+  .user-item{padding:10px 12px}
+  .dm-btn,.close-dm{opacity:1}
+  .ap-tab{padding:10px 12px}
+  #settingsPanel,#adminPanel{left:8px;right:8px;bottom:8px;width:auto;max-height:85dvh;z-index:1300}
+  .notifs{left:8px;right:8px;top:8px;max-width:none}
+  .login-title{font-size:52px;margin-bottom:10px}
+  .modal{max-width:96vw}
+}
 </style>
 </head>
 <body>
@@ -347,6 +406,7 @@ body.light-theme .user-display-name{color:#060607}
 </svg>
 
 <div id="loginOverlay">
+<canvas id="particles"></canvas>
 <div class="login-title">The Chet</div>
 <div id="loginCard">
 <h2>Welcome to The Chet</h2>
@@ -526,10 +586,21 @@ body.light-theme .user-display-name{color:#060607}
 <label class="form-label">Reason (optional)</label>
 <input type="text" class="form-input" id="modReason" placeholder="Violation reason..." maxlength="200">
 </div>
-<div class="ban-type-selector" id="banTypeSelector" style="display:none">
+<div id="banOptions" style="display:none">
+<div class="form-group">
+<label class="form-label">Ban Mode</label>
+<select class="form-select" id="banMode">
+<option value="full">Full ban: kicked, can't rejoin</option>
+<option value="mute">Infinite mute: can't type anywhere</option>
+<option value="dm">Chat block: no channels, DMs still work</option>
+</select>
+</div>
+<label class="form-label">Applies to</label>
+<div class="ban-type-selector" id="banTypeSelector">
 <button class="ban-type-btn" data-type="username">Username Only</button>
 <button class="ban-type-btn selected" data-type="ip">IP Only</button>
 <button class="ban-type-btn" data-type="both">Both</button>
+</div>
 </div>
 <button class="btn btn-primary" id="execMod">Execute Action</button>
 </div>
@@ -563,6 +634,8 @@ body.light-theme .user-display-name{color:#060607}
 <div class="ban-list" id="bannedUsers"></div>
 <div class="form-label">Banned IP Addresses</div>
 <div class="ban-list" id="bannedIPs"></div>
+<div class="form-label">Muted / Chat-blocked</div>
+<div class="ban-list" id="restrictedList"></div>
 <button class="btn btn-primary" id="refreshBans">🔄 Refresh Lists</button>
 </div>
 <div class="ap-section" data-section="settings">
@@ -595,6 +668,8 @@ body.light-theme .user-display-name{color:#060607}
 </div>
 </div>
 </div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
 
 <div class="container">
 <div class="sidebar">
@@ -690,14 +765,21 @@ gaming
 
 <div class="main-content">
 <div class="chat-header">
+<button class="mob-btn" id="menuBtn" title="Channels">☰</button>
 <div class="current-channel" id="curChan">general</div>
 <div class="header-actions" id="roomTools" style="display:none">
 <span class="room-count" id="roomCount"></span>
 <button class="room-btn" id="copyInvite">Copy invite link</button>
 </div>
+<button class="mob-btn" id="usersBtn" title="Online users">👥</button>
 </div>
 <div class="messages" id="msgArea"></div>
 <div class="input-area">
+<div id="gifPanel">
+<input type="text" id="gifSearch" placeholder="Search GIFs" autocomplete="off">
+<div id="gifGrid"></div>
+<div class="gif-credit">Powered by GIPHY</div>
+</div>
 <div class="typing-indicator" id="typingInd"></div>
 <div class="reply-bar" id="replyBar">
 <span class="reply-bar-text" id="replyText"></span>
@@ -708,6 +790,7 @@ gaming
 <input type="text" class="msg-input" id="msgInput" placeholder="Message #general (try /help)" maxlength="2000" autocomplete="off">
 <input type="file" class="image-input" id="imageInput" accept="image/*">
 <button class="input-btn" id="imageBtn" title="Upload image">📷</button>
+<button class="input-btn" id="gifBtn" title="Send a GIF">GIF</button>
 <button class="send-btn" id="sendBtn" disabled>Send</button>
 </div>
 </div>
@@ -720,14 +803,7 @@ gaming
 <span class="online-count" id="onlineCount">0</span>
 </div>
 <div class="users-section">
-<div class="role-header owner-header" id="ownerHeader" style="display:none">👑 Owners</div>
-<div id="ownersList"></div>
-<div class="role-header admin-header" id="adminHeader" style="display:none">⚡ Admins</div>
-<div id="adminsList"></div>
-<div class="role-header vip-header" id="vipHeader" style="display:none">⭐ VIP</div>
-<div id="vipsList"></div>
-<div class="role-header guest-header" id="guestHeader" style="display:none">Users</div>
-<div id="guestsList"></div>
+<div id="usersList"></div>
 </div>
 </div>
 </div>
@@ -744,7 +820,8 @@ gaming
 
 const EMOJIS = ['👍','👎','❤️','😂','😮','😢','🔥','🎉','👀','💯'];
 const WS_FALLBACK = 'wss://chet.jplevandoski.workers.dev/ws'; // used only if the page isn't served over http(s)
-const MAX_IMAGE_CHARS = 115000;                               // must stay below the server's limit (120000)
+const API_BASE = /^https?:$/.test(location.protocol) ? '' : 'https://chet.jplevandoski.workers.dev';
+const MAX_IMAGE_BYTES = 500 * 1024; // larger images are refused (not shrunk); must fit the server's 700000-char limit
 const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 // Edit these to change the rules shown when someone clicks Join.
@@ -786,6 +863,7 @@ let isAdmin = false, isVIP = false, isOwner = false;
 let curChan = 'general', chatType = 'channel', curDM = null, replyTo = null;
 const messages = {}, dmMessages = {}, dmPartners = {}, unreadChannels = {}, unreadDMs = {};
 let users = [];
+let blockedNames = new Set();
 let hasUnread = false, selectedBanType = 'ip', selectedImage = null, swReg = null;
 let currentVoiceChannel = null, localStream = null, isMuted = false, voiceBusy = false;
 const peers = {}, voiceChannelData = {};
@@ -935,39 +1013,64 @@ function send(d) {
   return false;
 }
 
-/* ---------- images ---------- */
-function loadImage(file) {
+/* ---------- images (sent exactly as uploaded, no compression) ---------- */
+function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
-    img.src = url;
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('Could not read file'));
+    r.readAsDataURL(file);
   });
 }
 
-// Shrinks the image until its data URL fits the server's per-message limit.
-async function uploadImage(file) {
-  const img = await loadImage(file);
-  let maxDim = 800, quality = 0.7;
-  for (let i = 0; i < 8; i++) {
-    let w = img.width, h = img.height;
-    if (w > maxDim || h > maxDim) {
-      if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
-      else { w = Math.round(w * maxDim / h); h = maxDim; }
-    }
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(img, 0, 0, w, h);
-    const dataUrl = canvas.toDataURL('image/jpeg', quality);
-    if (dataUrl.length <= MAX_IMAGE_CHARS) return dataUrl;
-    maxDim = Math.round(maxDim * 0.8);
-    quality = Math.max(0.4, quality - 0.05);
+/* ---------- login particles ---------- */
+function initParticles() {
+  const overlay = $('loginOverlay'), cv = $('particles'), ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const mouse = { x: -1000, y: -1000 };
+  let W = 0, H = 0, dots = [], raf = 0;
+  const spawn = () => ({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .5, vy: (Math.random() - .5) * .5, r: 1 + Math.random() * 1.8 });
+
+  function resize() {
+    const k = devicePixelRatio || 1;
+    W = overlay.clientWidth; H = overlay.clientHeight;
+    cv.width = W * k; cv.height = H * k;
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    const n = Math.min(120, Math.round(W * H / 12000));
+    while (dots.length < n) dots.push(spawn());
+    dots.length = n;
   }
-  throw new Error('Image is too large');
+
+  function frame() {
+    if (overlay.style.display === 'none') { raf = 0; return; } // stops once you're logged in
+    ctx.clearRect(0, 0, W, H);
+    for (const p of dots) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+      const dx = p.x - mouse.x, dy = p.y - mouse.y, d2 = dx * dx + dy * dy;
+      if (d2 < 14000) { const d = Math.sqrt(d2) || 1; p.x += dx / d * 1.2; p.y += dy / d * 1.2; }
+    }
+    for (let i = 0; i < dots.length; i++) {
+      const a = dots[i];
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, 6.283); ctx.fill();
+      for (let j = i + 1; j < dots.length; j++) {
+        const b = dots[j], dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+        if (d2 < 16000) {
+          ctx.strokeStyle = `rgba(88,101,242,${.35 * (1 - d2 / 16000)})`;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      }
+    }
+    raf = reduce ? 0 : requestAnimationFrame(frame);
+  }
+
+  window.startParticles = () => { resize(); if (!raf) raf = requestAnimationFrame(frame); };
+  addEventListener('resize', () => { if (overlay.style.display !== 'none') resize(); });
+  overlay.addEventListener('pointermove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  overlay.addEventListener('pointerleave', () => { mouse.x = mouse.y = -1000; });
+  startParticles();
 }
 
 /* ---------- connection ---------- */
@@ -1043,6 +1146,7 @@ function failLogin(message) {
   $('loginOverlay').style.display = 'flex';
   $('loginError').textContent = message;
   if (loginPassword) showAdminField(true);
+  startParticles();
 }
 
 /* ---------- message handling ---------- */
@@ -1081,6 +1185,7 @@ function handle(d) {
     },
     joinError: () => failLogin(d.message || 'Could not join'),
     dmList: () => d.chats.forEach(c => { dmPartners[c.chatId] = c.with; addDM(c.chatId, c.with); }),
+    blockList: () => { blockedNames = new Set(d.users.map(n => n.toLowerCase())); updUsers(); },
 
     roomJoined: () => {
       if (!savedRooms.includes(d.code)) { savedRooms.push(d.code); saveRooms(); }
@@ -1142,6 +1247,11 @@ function handle(d) {
       }
     },
     privateHistory: () => { dmMessages[d.chatId] = d.messages; if (chatType === 'dm' && d.chatId === curDM) render(true); },
+    privateMessageDeleted: () => {
+      if (!dmMessages[d.chatId]) return;
+      dmMessages[d.chatId] = dmMessages[d.chatId].filter(m => m.id !== d.messageId);
+      if (chatType === 'dm' && d.chatId === curDM) render();
+    },
     reactionUpdate: () => {
       const arr = d.isPrivate ? dmMessages[d.chatId] : messages[d.channel];
       const m = arr && arr.find(x => x.id === d.messageId);
@@ -1152,6 +1262,7 @@ function handle(d) {
     banned: () => { noReconnect = true; alert(d.message); location.href = 'https://google.com'; },
     timedOut: () => { notify('⏰', d.message); lockInput(d.duration); },
     forceMute: () => { notify('🔇', d.message || `Muted for ${d.duration}s`); lockInput(d.duration); },
+    restricted: () => notify('🔇', d.message),
     warning: () => notify(`⚠️ Warning #${d.count}`, d.message),
     broadcast: () => notify('📢', d.message),
     adminActionSuccess: () => notify('✅', d.message || 'Done'),
@@ -1238,35 +1349,26 @@ function updateDMBadge(chatId) {
   item.classList.toggle('has-unread', count > 0);
 }
 
-/* ---------- user lists ---------- */
+/* ---------- user list (one combined list, role shown by name colour only) ---------- */
 function makeUserItem(u) {
   const row = el('div', 'user-item');
-  const name = el('span', 'user-name');
-  const icon = u.isOwner ? '👑 ' : u.isAdmin ? '⚡ ' : u.isVIP ? '⭐ ' : '';
-  name.appendChild(document.createTextNode(icon + u.username + (u.username === username ? ' (you)' : '')));
-  if (u.isOwner) name.appendChild(el('span', 'role-badge owner', 'OWNER'));
-  else if (u.isAdmin) name.appendChild(el('span', 'role-badge admin', 'ADMIN'));
-  else if (u.isVIP) name.appendChild(el('span', 'role-badge vip', 'VIP'));
-  row.appendChild(name);
+  const role = u.isOwner ? 'owner' : u.isAdmin ? 'admin' : u.isVIP ? 'vip' : '';
+  row.appendChild(el('span', 'user-name' + (role ? ' ' + role : ''), u.username + (u.username === username ? ' (you)' : '')));
   if (u.username !== username) {
-    const btn = el('button', 'dm-btn', 'DM');
-    btn.onclick = () => reqDM(u.username);
-    row.appendChild(btn);
+    const actions = el('span', 'user-actions');
+    const dm = el('button', 'dm-btn', 'DM');
+    dm.onclick = () => reqDM(u.username);
+    const blocked = blockedNames.has(u.username.toLowerCase());
+    const blk = el('button', 'dm-btn block-btn', blocked ? 'Unblock' : 'Block');
+    blk.onclick = () => send({ type: blocked ? 'unblockUser' : 'blockUser', targetUsername: u.username, username: u.username });
+    actions.append(dm, blk);
+    row.appendChild(actions);
   }
   return row;
 }
 
 function updUsers() {
-  const groups = [
-    ['ownerHeader', 'ownersList', users.filter(u => u.isOwner)],
-    ['adminHeader', 'adminsList', users.filter(u => u.isAdmin && !u.isOwner)],
-    ['vipHeader', 'vipsList', users.filter(u => u.isVIP && !u.isAdmin && !u.isOwner)],
-    ['guestHeader', 'guestsList', users.filter(u => !u.isVIP && !u.isAdmin && !u.isOwner)]
-  ];
-  for (const [header, list, members] of groups) {
-    $(header).style.display = members.length ? 'block' : 'none';
-    $(list).replaceChildren(...members.map(makeUserItem));
-  }
+  $('usersList').replaceChildren(...users.map(makeUserItem));
   $('onlineCount').textContent = users.length;
   updSelects();
 }
@@ -1303,19 +1405,23 @@ function updSelects() {
 }
 
 function renderBanList(d) {
-  const fill = (box, items, onUnban, emptyText) => {
-    if (!items.length) { box.replaceChildren(el('div', 'empty', emptyText)); return; }
-    box.replaceChildren(...items.map(item => {
+  const fill = (box, rows, emptyText) => {
+    if (!rows.length) { box.replaceChildren(el('div', 'empty', emptyText)); return; }
+    box.replaceChildren(...rows.map(([label, onUndo]) => {
       const row = el('div', 'ban-item');
-      row.appendChild(el('span', null, item));
-      const b = el('button', 'unban-btn', 'Unban');
-      b.onclick = () => onUnban(item);
+      row.appendChild(el('span', null, label));
+      const b = el('button', 'unban-btn', 'Remove');
+      b.onclick = onUndo;
       row.appendChild(b);
       return row;
     }));
   };
-  fill($('bannedUsers'), d.bannedUsers, u => send({ type: 'adminUnban', username: u }), 'No banned usernames');
-  fill($('bannedIPs'), d.bannedIPs, ip => send({ type: 'adminUnbanIP', ip }), 'No banned IPs');
+  fill($('bannedUsers'), d.bannedUsers.map(u => [u, () => send({ type: 'adminUnban', username: u })]), 'No banned usernames');
+  fill($('bannedIPs'), d.bannedIPs.map(ip => [ip, () => send({ type: 'adminUnbanIP', ip })]), 'No banned IPs');
+  fill($('restrictedList'), (d.restricted || []).map(r => [
+    `${r.value} (${r.kind}, ${r.mode === 'mute' ? 'muted' : 'chat blocked'})`,
+    () => send({ type: 'adminUnrestrict', kind: r.kind, value: r.value })
+  ]), 'Nobody is muted or chat-blocked');
 }
 
 function reqDM(name) {
@@ -1412,6 +1518,7 @@ function resetComposerState() {
 }
 
 function switchChan(ch) {
+  closeDrawers();
   resetComposerState();
   chatType = 'channel'; curDM = null; curChan = ch;
   const room = isRoom(ch);
@@ -1429,6 +1536,7 @@ function switchChan(ch) {
 }
 
 function switchDM(id, name) {
+  closeDrawers();
   resetComposerState();
   chatType = 'dm'; curDM = id;
   $('curChan').textContent = name; $('curChan').classList.add('private'); $('curChan').classList.remove('room');
@@ -1507,11 +1615,32 @@ function render(forceBottom) {
     reactBtn.title = 'React';
     reactBtn.onclick = () => showEmojiPicker(reactBtn, m.id);
     actions.appendChild(reactBtn);
-    if (isStaff() && chatType === 'channel') {
+
+    // Everyone can delete their own messages; staff can also delete other people's in channels.
+    const mineMsg = m.author === username;
+    if (mineMsg || (isStaff() && chatType === 'channel')) {
       const del = el('button', 'msg-action danger', '🗑');
       del.title = 'Delete message';
-      del.onclick = () => send({ type: 'adminDeleteMessage', channel: curChan, messageId: m.id });
+      del.onclick = () => {
+        if (mineMsg) {
+          send(chatType === 'dm'
+            ? { type: 'deleteMessage', isPrivate: true, chatId: curDM, messageId: m.id }
+            : { type: 'deleteMessage', channel: curChan, messageId: m.id });
+        } else {
+          send({ type: 'adminDeleteMessage', channel: curChan, messageId: m.id });
+        }
+      };
       actions.appendChild(del);
+    }
+
+    // Touch screens have no hover, so tapping a message shows its buttons.
+    if (window.matchMedia('(hover: none)').matches) {
+      msg.onclick = e => {
+        if (e.target.closest('.msg-actions, .reaction, .msg-image, .emoji-picker')) return;
+        const was = msg.classList.contains('tapped');
+        document.querySelectorAll('.message.tapped').forEach(x => x.classList.remove('tapped'));
+        if (!was) msg.classList.add('tapped');
+      };
     }
 
     msg.append(actions, avatar, content);
@@ -1588,6 +1717,38 @@ function sendMessage() {
   replyTo = null;
   $('replyBar').classList.remove('show');
   $('replyText').textContent = '';
+}
+
+/* ---------- GIF picker (search runs through the Worker, which holds the GIPHY key) ---------- */
+let gifTimer = null, gifReq = 0;
+
+function closeGif() { $('gifPanel').classList.remove('show'); }
+
+async function loadGifs(q) {
+  const grid = $('gifGrid'), mine = ++gifReq;
+  grid.replaceChildren(el('div', 'empty', 'Loading...'));
+  try {
+    const r = await fetch(`${API_BASE}/api/gifs?q=${encodeURIComponent(q)}`);
+    const data = await r.json();
+    if (mine !== gifReq) return;
+    if (!r.ok) throw new Error(data.error || 'GIF search failed');
+    if (!data.results.length) { grid.replaceChildren(el('div', 'empty', 'No GIFs found')); return; }
+    grid.replaceChildren(...data.results.map(g => {
+      const img = el('img', 'gif-item');
+      img.src = g.preview; img.alt = g.title || 'GIF'; img.loading = 'lazy';
+      img.onclick = () => sendGif(g.url);
+      return img;
+    }));
+  } catch (e) {
+    if (mine === gifReq) grid.replaceChildren(el('div', 'empty', e.message));
+  }
+}
+
+function sendGif(url) {
+  if (!connected) { notify('⚠️', 'Not connected yet'); return; }
+  selectedImage = url;
+  sendMessage();
+  closeGif();
 }
 
 /* ---------- voice (WebRTC mesh, signalling through the server) ---------- */
@@ -1721,6 +1882,17 @@ async function handleIceCandidate(d) {
   try { await peer.pc.addIceCandidate(d.candidate); } catch (e) { console.error('ICE error:', e); }
 }
 
+/* ---------- mobile drawers ---------- */
+function closeDrawers() {
+  document.querySelectorAll('.sidebar').forEach(s => s.classList.remove('drawer-open'));
+  $('drawerBackdrop').classList.remove('show');
+}
+function openDrawer(selector) {
+  closeDrawers();
+  document.querySelector(selector).classList.add('drawer-open');
+  $('drawerBackdrop').classList.add('show');
+}
+
 /* ---------- UI wiring ---------- */
 $('loginBtn').onclick = login;
 $('adminToggle').onclick = () => showAdminField(!adminFieldShown());
@@ -1759,6 +1931,12 @@ document.querySelectorAll('.voice-channel').forEach(v => { v.onclick = () => joi
   $('leaveVoice' + C).onclick = leaveVoice;
 });
 
+// mobile drawers
+$('menuBtn').onclick = () => openDrawer('.sidebar:not(.right)');
+$('usersBtn').onclick = () => openDrawer('#rightSidebar');
+$('drawerBackdrop').onclick = closeDrawers;
+window.matchMedia('(min-width:769px)').addEventListener('change', closeDrawers);
+
 // custom rooms
 function joinRoomFromInput() {
   const code = $('roomCodeInput').value;
@@ -1771,12 +1949,18 @@ $('roomCodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') joi
 $('newRoomBtn').onclick = () => requestRoom(randomRoomCode(), false);
 $('copyInvite').onclick = copyInvite;
 
+// images and GIFs
 $('imageBtn').onclick = () => $('imageInput').click();
 $('imageInput').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
+  if (file.size > MAX_IMAGE_BYTES) {
+    notify('❌', `Image is too big (max ${Math.round(MAX_IMAGE_BYTES / 1024)} KB). For big animations use the GIF button.`);
+    clearImagePreview();
+    return;
+  }
   try {
-    selectedImage = await uploadImage(file);
+    selectedImage = await readFileAsDataURL(file);
   } catch (err) {
     notify('❌', err.message);
     clearImagePreview();
@@ -1790,6 +1974,19 @@ $('imageInput').addEventListener('change', async e => {
   $('imagePreviewContainer').replaceChildren(preview);
 });
 
+$('gifBtn').onclick = e => {
+  e.stopPropagation();
+  const open = $('gifPanel').classList.toggle('show');
+  if (open) { $('gifSearch').value = ''; loadGifs(''); $('gifSearch').focus(); }
+};
+$('gifSearch').addEventListener('input', () => {
+  clearTimeout(gifTimer);
+  gifTimer = setTimeout(() => loadGifs($('gifSearch').value.trim()), 400);
+});
+document.addEventListener('click', e => {
+  if (!$('gifPanel').contains(e.target) && e.target !== $('gifBtn')) closeGif();
+});
+
 $('cancelReply').onclick = () => { replyTo = null; $('replyBar').classList.remove('show'); $('replyText').textContent = ''; };
 $('imageModal').onclick = () => $('imageModal').classList.remove('show');
 $('closeHelp').onclick = () => $('helpModal').classList.remove('show');
@@ -1801,7 +1998,7 @@ $('rightToggle').onclick = () => {
 };
 
 // settings panel
-$('settingsBtn').onclick = () => { $('adminPanel').classList.remove('show'); updateNotifStatus(); $('settingsPanel').classList.toggle('show'); };
+$('settingsBtn').onclick = () => { closeDrawers(); $('adminPanel').classList.remove('show'); updateNotifStatus(); $('settingsPanel').classList.toggle('show'); };
 $('closeSettings').onclick = () => $('settingsPanel').classList.remove('show');
 function changeSetting(fn) { fn(); saveSettings(); applySettings(); render(); }
 $('notifOffToggle').onclick = () => changeSetting(() => { userSettings.notifications = 'off'; });
@@ -1824,6 +2021,7 @@ document.querySelectorAll('.color-option').forEach(o => {
 
 // admin panel
 $('adminBtn').onclick = () => {
+  closeDrawers();
   $('settingsPanel').classList.remove('show');
   const panel = $('adminPanel');
   panel.classList.toggle('show');
@@ -1845,7 +2043,7 @@ document.querySelectorAll('.ban-type-btn').forEach(b => {
     document.querySelectorAll('.ban-type-btn').forEach(x => x.classList.toggle('selected', x === b));
   };
 });
-$('modAction').onchange = () => { $('banTypeSelector').style.display = $('modAction').value === 'ban' ? 'flex' : 'none'; };
+$('modAction').onchange = () => { $('banOptions').style.display = $('modAction').value === 'ban' ? 'block' : 'none'; };
 
 $('execMod').onclick = () => {
   const target = $('modUser').value;
@@ -1856,7 +2054,7 @@ $('execMod').onclick = () => {
     kick: { type: 'adminKick' },
     timeout: { type: 'adminTimeout', duration },
     mute: { type: 'adminForceMute', duration },
-    ban: { type: 'adminBan', banType: selectedBanType },
+    ban: { type: 'adminBan', banType: selectedBanType, mode: $('banMode').value },
     warning: { type: 'adminWarning' }
   };
   send({ ...byAction[$('modAction').value], targetUsername: target, reason });
@@ -1892,6 +2090,7 @@ window.addEventListener('load', () => {
   updateAllVoiceUI();
   updateNotifStatus();
   registerWorker();
+  initParticles();
   savedRooms.forEach(addRoomItem);
 
   const saved = store.get('username');
