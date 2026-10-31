@@ -11,7 +11,7 @@
  * have sent `joinRoom` for that code can read it, post in it, or receive its events.
  */
 
-const CHANNELS = ['general', 'gaming', 'memes', 'proxy'];
+const CHANNELS = ['general', 'gaming', 'memes'];
 const VOICE_CHANNELS = ['general', 'chill', 'gaming'];
 const COLORS = ['default', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
 const EFFECTS = new Set([
