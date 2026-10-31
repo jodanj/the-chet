@@ -1,7 +1,7 @@
 {
   "name": "the-chet",
   "version": "1.0.0",
-  "description": "A Discord-like chat application deployed on Cloudflare Workers",
+  "description": "idk like a cool website",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
