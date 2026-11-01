@@ -1,43 +1,39 @@
 /**
- * The Chet - Cloudflare Worker + Durable Object chat server.
+ * Hub - Cloudflare Worker + Durable Object realtime server.
  *
  * Secrets (set with `npx wrangler secret put NAME`, or in .dev.vars for local dev):
  *   OWNER_PASSWORD, ADMIN_PASSWORD, VIP_PASSWORD, GIPHY_API_KEY
- * A role is granted when the password typed into the login form matches one of them.
- * If a secret is not set, that role simply cannot be obtained.
- * GIPHY_API_KEY (free at developers.giphy.com) powers the GIF button.
+ * A role is granted when the access key typed into the form matches one of them.
  *
- * Custom rooms: any channel named "room:<code>" is a private room. Only sockets that
- * have sent `joinRoom` for that code can read it, post in it, or receive its events.
+ * Spaces: any board named "space:<code>" is private. Only sockets that
+ * have entered that code can read it, post in it, or receive its events.
  */
 
-const CHANNELS = ['general', 'gaming', 'memes'];
-const VOICE_CHANNELS = ['general', 'chill', 'gaming'];
+const BOARDS = ['general', 'gaming', 'memes'];
+const AV_BOARDS = ['general', 'chill', 'gaming'];
 const COLORS = ['default', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
 const EFFECTS = new Set([
   'spinScreen', 'shakeScreen', 'flipScreen', 'invertColors', 'rainbow',
   'blur', 'matrix', 'emojiSpam', 'confetti', 'rickRoll'
 ]);
 
-const MAX_CHANNEL_HISTORY = 100;
-const MAX_DM_HISTORY = 200;
+const MAX_BOARD_LOG = 100;
+const MAX_LINK_LOG = 200;
 const MAX_TEXT = 2000;
-const MAX_IMAGE_CHARS = 700000;  // ~500 KB image as base64 (SQLite-backed objects store values up to 2 MB)
-const MAX_FRAME_CHARS = 1000000; // WebSocket messages are capped at 1 MiB
+const MAX_MEDIA_CHARS = 700000;
+const MAX_FRAME_CHARS = 1000000;
 
-// Only GIPHY links (from the GIF picker) are accepted as remote images.
-const GIF_URL_RE = /^https:\/\/(?:media\d*|i)\.giphy\.com\/[\w\-./%]+(?:\?[\w\-=&%.]*)?$/;
+const ANIM_URL_RE = /^https:\/\/(?:media\d*|i)\.giphy\.com\/[\w\-./%]+(?:\?[\w\-=&%.]*)?$/;
 
-// Auto slow mode: 9+ messages in 3 seconds -> one message per 3 seconds for 5 minutes.
-const SPAM_MESSAGES = 9, SPAM_WINDOW_MS = 3000;
-const AUTO_SLOW_MS = 5 * 60 * 1000, AUTO_SLOW_GAP_MS = 3000;
+const BURST_COUNT = 9, BURST_WINDOW_MS = 3000;
+const AUTO_PACE_MS = 5 * 60 * 1000, AUTO_PACE_GAP_MS = 3000;
 
-const MAX_BLOCKS = 100;
-const BAN_MODES = ['full', 'mute', 'dm'];
+const MAX_HIDDEN = 100;
+const BAR_MODES = ['full', 'mute', 'dm'];
 
-const ROOM_RE = /^room:[a-z0-9-]{3,20}$/;
-const MAX_ROOMS_PER_USER = 10;
-const MAX_ROOMS_TOTAL = 200;
+const SPACE_RE = /^space:[a-z0-9-]{3,20}$/;
+const MAX_SPACES_PER_USER = 10;
+const MAX_SPACES_TOTAL = 200;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMOJI_RE = /^\P{ASCII}{1,10}$/u;
@@ -45,13 +41,13 @@ const EMOJI_RE = /^\P{ASCII}{1,10}$/u;
 // ---------- helpers ----------
 
 const send = (ws, data) => {
-  try { ws.send(JSON.stringify(data)); } catch { /* socket already closed */ }
+  try { ws.send(JSON.stringify(data)); } catch { /* socket closed */ }
 };
 const bg = (promise) => promise.catch((err) => console.error('storage error:', err));
 const lc = (s) => String(s).toLowerCase();
 const pad = (n) => String(n).padStart(15, '0');
-const chKey = (m) => `ch:${m.channel}:${pad(m.timestamp)}-${m.id}`;
-const dmKey = (m) => `dm:${m.chatId}:${pad(m.timestamp)}-${m.id}`;
+const bKey = (m) => `b:${m.board}:${pad(m.ts)}-${m.id}`;
+const tKey = (m) => `t:${m.thread}:${pad(m.ts)}-${m.id}`;
 
 const clamp = (n, lo, hi, fallback) => {
   n = Number(n);
@@ -71,12 +67,10 @@ function cleanReason(v) {
   return typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 200) : '';
 }
 
-// Room codes: lowercase letters, digits and dashes, 3-20 long (anything else is stripped).
-const normRoom = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 20);
-const isRoomChannel = (c) => typeof c === 'string' && ROOM_RE.test(c);
-const validChannel = (c) => typeof c === 'string' && (CHANNELS.includes(c) || ROOM_RE.test(c));
+const normSpace = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 20);
+const isSpaceBoard = (c) => typeof c === 'string' && SPACE_RE.test(c);
+const validBoard = (c) => typeof c === 'string' && (BOARDS.includes(c) || SPACE_RE.test(c));
 
-// Constant-time string comparison. An unset/empty secret never matches.
 function safeEqual(input, secret) {
   if (typeof input !== 'string' || typeof secret !== 'string' || !secret) return false;
   const enc = new TextEncoder();
@@ -93,31 +87,29 @@ const isStaff = (u) => !!(u && (u.isAdmin || u.isOwner));
 
 // ---------- Durable Object ----------
 
-export class ChatRoom {
+export class Hub {
   constructor(ctx, env) {
     this.ctx = ctx;
     this.env = env;
 
-    this.channels = Object.fromEntries(CHANNELS.map((c) => [c, []])); // also holds "room:<code>" lists
-    this.privateChats = new Map();    // chatId -> message[]
-    this.dmParticipants = new Map();  // chatId -> [{ uuid, username }, { uuid, username }]
-    this.bannedUsers = new Set();     // lowercase usernames
-    this.bannedIPs = new Set();
-    this.userWarnings = new Map();    // lowercase username -> count
-    this.userProfiles = new Map();    // lowercase username -> { color }
-    this.slowMode = { enabled: false, duration: 5 };
-    this.restrictedIPs = new Map();   // ip -> 'mute' | 'dm'
-    this.restrictedUsers = new Map(); // lowercase username -> 'mute' | 'dm'
-    this.blocks = new Map();          // blocker uuid -> Map(blocked uuid -> username)
+    this.boards = Object.fromEntries(BOARDS.map((c) => [c, []]));
+    this.links = new Map();           // thread id -> item[]
+    this.linkMembers = new Map();     // thread id -> [{ uuid, name }, { uuid, name }]
+    this.barredNames = new Set();
+    this.barredIPs = new Set();
+    this.notices = new Map();
+    this.profiles = new Map();
+    this.pace = { enabled: false, duration: 5 };
+    this.limitedIPs = new Map();
+    this.limitedNames = new Map();
+    this.hidden = new Map();          // uuid -> Map(uuid -> name)
 
-    // Short-lived state: fine to lose when the object hibernates.
-    this.lastMessageAt = new Map();   // lowercase username -> ms
-    this.mutedUntil = new Map();      // lowercase username -> ms
-    this.recentMsgs = new Map();      // lowercase username -> [timestamps]
-    this.autoSlowUntil = new Map();   // lowercase username -> ms
+    this.lastPostAt = new Map();
+    this.pausedUntil = new Map();
+    this.recentPosts = new Map();
+    this.autoPaceUntil = new Map();
     this.lastTs = 0;
 
-    // Load persisted state before any request is handled.
     ctx.blockConcurrencyWhile(() => this.load());
   }
 
@@ -126,39 +118,38 @@ export class ChatRoom {
   async load() {
     const meta = await this.ctx.storage.get('meta');
     if (meta) {
-      this.bannedUsers = new Set(meta.bannedUsers || []);
-      this.bannedIPs = new Set(meta.bannedIPs || []);
-      this.userWarnings = new Map(Object.entries(meta.userWarnings || {}));
-      this.userProfiles = new Map(Object.entries(meta.userProfiles || {}));
-      this.dmParticipants = new Map(Object.entries(meta.dmParticipants || {}));
-      this.restrictedIPs = new Map(Object.entries(meta.restrictedIPs || {}));
-      this.restrictedUsers = new Map(Object.entries(meta.restrictedUsers || {}));
-      this.blocks = new Map(Object.entries(meta.blocks || {}).map(([k, o]) => [k, new Map(Object.entries(o))]));
-      if (meta.slowMode) this.slowMode = meta.slowMode;
+      this.barredNames = new Set(meta.bannedUsers || []);
+      this.barredIPs = new Set(meta.bannedIPs || []);
+      this.notices = new Map(Object.entries(meta.userWarnings || {}));
+      this.profiles = new Map(Object.entries(meta.userProfiles || {}));
+      this.linkMembers = new Map(Object.entries(meta.dmParticipants || {}));
+      this.limitedIPs = new Map(Object.entries(meta.restrictedIPs || {}));
+      this.limitedNames = new Map(Object.entries(meta.restrictedUsers || {}));
+      this.hidden = new Map(Object.entries(meta.blocks || {}).map(([k, o]) => [k, new Map(Object.entries(o))]));
+      if (meta.slowMode) this.pace = meta.slowMode;
     }
 
-    // list() returns keys in ascending order, and keys embed a zero-padded timestamp.
-    for (const m of (await this.ctx.storage.list({ prefix: 'ch:' })).values()) {
-      const list = this.chanList(m.channel, true);
+    for (const m of (await this.ctx.storage.list({ prefix: 'b:' })).values()) {
+      const list = this.boardList(m.board, true);
       if (list) list.push(m);
     }
-    for (const m of (await this.ctx.storage.list({ prefix: 'dm:' })).values()) {
-      if (!this.privateChats.has(m.chatId)) this.privateChats.set(m.chatId, []);
-      this.privateChats.get(m.chatId).push(m);
+    for (const m of (await this.ctx.storage.list({ prefix: 't:' })).values()) {
+      if (!this.links.has(m.thread)) this.links.set(m.thread, []);
+      this.links.get(m.thread).push(m);
     }
   }
 
   saveMeta() {
     bg(this.ctx.storage.put('meta', {
-      bannedUsers: [...this.bannedUsers],
-      bannedIPs: [...this.bannedIPs],
-      userWarnings: Object.fromEntries(this.userWarnings),
-      userProfiles: Object.fromEntries(this.userProfiles),
-      dmParticipants: Object.fromEntries(this.dmParticipants),
-      restrictedIPs: Object.fromEntries(this.restrictedIPs),
-      restrictedUsers: Object.fromEntries(this.restrictedUsers),
-      blocks: Object.fromEntries([...this.blocks].map(([k, m]) => [k, Object.fromEntries(m)])),
-      slowMode: this.slowMode
+      bannedUsers: [...this.barredNames],
+      bannedIPs: [...this.barredIPs],
+      userWarnings: Object.fromEntries(this.notices),
+      userProfiles: Object.fromEntries(this.profiles),
+      dmParticipants: Object.fromEntries(this.linkMembers),
+      restrictedIPs: Object.fromEntries(this.limitedIPs),
+      restrictedUsers: Object.fromEntries(this.limitedNames),
+      blocks: Object.fromEntries([...this.hidden].map(([k, m]) => [k, Object.fromEntries(m)])),
+      slowMode: this.pace
     }));
   }
 
@@ -167,70 +158,64 @@ export class ChatRoom {
     return this.lastTs;
   }
 
-  // ----- channel / room helpers -----
+  // ----- board / space helpers -----
 
-  // Message list for a channel. Rooms are created on demand when `create` is true.
-  chanList(channel, create = false) {
-    if (!validChannel(channel)) return null;
-    if (!this.channels[channel] && create && isRoomChannel(channel)) this.channels[channel] = [];
-    return this.channels[channel] || null;
+  boardList(board, create = false) {
+    if (!validBoard(board)) return null;
+    if (!this.boards[board] && create && isSpaceBoard(board)) this.boards[board] = [];
+    return this.boards[board] || null;
   }
 
-  // Built-in channels are open to everyone; rooms only to sockets that joined them.
-  canAccessChannel(user, channel) {
-    if (CHANNELS.includes(channel)) return true;
-    return isRoomChannel(channel) && (user.rooms || []).includes(channel.slice(5));
+  canAccessBoard(user, board) {
+    if (BOARDS.includes(board)) return true;
+    return isSpaceBoard(board) && (user.spaces || []).includes(board.slice(6));
   }
 
-  roomUsers(code) {
-    return this.joinedSockets().filter(([, u]) => (u.rooms || []).includes(code)).map(([, u]) => u.username);
+  spaceMembers(code) {
+    return this.joinedSockets().filter(([, u]) => (u.spaces || []).includes(code)).map(([, u]) => u.name);
   }
 
-  roomCount() {
-    return Object.keys(this.channels).filter((k) => k.startsWith('room:')).length;
+  spaceCount() {
+    return Object.keys(this.boards).filter((k) => k.startsWith('space:')).length;
   }
 
-  // Drop rooms that are empty and have nobody in them (they hold no stored data).
-  pruneRooms() {
-    for (const [k, list] of Object.entries(this.channels)) {
-      if (k.startsWith('room:') && !list.length && !this.roomUsers(k.slice(5)).length) delete this.channels[k];
+  pruneSpaces() {
+    for (const [k, list] of Object.entries(this.boards)) {
+      if (k.startsWith('space:') && !list.length && !this.spaceMembers(k.slice(6)).length) delete this.boards[k];
     }
   }
 
-  // Sends to everyone for built-in channels, or only to room members for rooms.
-  broadcastChannel(channel, data, exceptWs = null) {
-    if (!isRoomChannel(channel)) return this.broadcast(data, exceptWs);
-    const code = channel.slice(5);
+  broadcastBoard(board, data, exceptWs = null) {
+    if (!isSpaceBoard(board)) return this.broadcast(data, exceptWs);
+    const code = board.slice(6);
     const payload = JSON.stringify(data);
     for (const [ws, u] of this.joinedSockets()) {
-      if (ws === exceptWs || !(u.rooms || []).includes(code)) continue;
+      if (ws === exceptWs || !(u.spaces || []).includes(code)) continue;
       try { ws.send(payload); } catch { /* ignore */ }
     }
   }
 
-  broadcastRoomUsers(code) {
-    this.broadcastChannel('room:' + code, { type: 'roomUsers', code, users: this.roomUsers(code) });
+  broadcastSpaceMembers(code) {
+    this.broadcastBoard('space:' + code, { type: 'spaceMembers', code, members: this.spaceMembers(code) });
   }
 
-  // ----- WebSocket entry points -----
+  // ----- socket entry points -----
 
   async fetch(request) {
     if (request.headers.get('Upgrade') !== 'websocket') {
-      return new Response('Expected WebSocket request', { status: 426 });
+      return new Response('Not found', { status: 426 });
     }
 
     const ip = request.headers.get('cf-connecting-ip') || 'unknown';
     const [client, server] = Object.values(new WebSocketPair());
 
-    if (this.bannedIPs.has(ip)) {
-      // Short-lived socket: tell the client why, then hang up.
+    if (this.barredIPs.has(ip)) {
       server.accept();
-      server.send(JSON.stringify({ type: 'banned', message: 'You are banned from this server (IP ban)' }));
-      server.close(4003, 'banned');
+      server.send(JSON.stringify({ type: 'barred', message: 'Access denied (IP)' }));
+      server.close(4003, 'barred');
       return new Response(null, { status: 101, webSocket: client });
     }
 
-    // Hibernatable socket: the object can be evicted while connections stay open.
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ ip });
     return new Response(null, { status: 101, webSocket: client });
@@ -253,18 +238,18 @@ export class ChatRoom {
     const closeCode = code >= 1000 && code < 5000 && ![1005, 1006, 1015].includes(code) ? code : 1000;
     try { ws.close(closeCode, 'closing'); } catch { /* already closed */ }
 
-    if (user && user.username) {
-      if (user.voice) {
-        this.broadcast({ type: 'voiceUserLeft', username: user.username, channel: user.voice });
-        this.broadcast({ type: 'voiceUsers', channel: user.voice, users: this.voiceUsers(user.voice) });
+    if (user && user.name) {
+      if (user.av) {
+        this.broadcast({ type: 'avLeft', name: user.name, board: user.av });
+        this.broadcast({ type: 'avMembers', board: user.av, members: this.avMembers(user.av) });
       }
-      for (const code of user.rooms || []) this.broadcastRoomUsers(code);
-      this.broadcast({ type: 'userList', users: this.getUserList() });
+      for (const code of user.spaces || []) this.broadcastSpaceMembers(code);
+      this.broadcast({ type: 'roster', members: this.getRoster() });
     }
   }
 
   async webSocketError(ws, error) {
-    console.error('WebSocket error:', error);
+    console.error('Socket error:', error);
   }
 
   // ----- socket helpers -----
@@ -273,12 +258,11 @@ export class ChatRoom {
     return this.ctx.getWebSockets().filter((ws) => ws.readyState === 1);
   }
 
-  // [ws, attachment] for every socket that has completed the join handshake.
   joinedSockets() {
     const out = [];
     for (const ws of this.openSockets()) {
       const u = ws.deserializeAttachment();
-      if (u && u.username) out.push([ws, u]);
+      if (u && u.name) out.push([ws, u]);
     }
     return out;
   }
@@ -300,26 +284,26 @@ export class ChatRoom {
     }
   }
 
-  findUser(username) {
-    const name = lc(username ?? '');
+  findMember(name) {
+    const n = lc(name ?? '');
     for (const [ws, user] of this.joinedSockets()) {
-      if (lc(user.username) === name) return { ws, user };
+      if (lc(user.name) === n) return { ws, user };
     }
     return null;
   }
 
-  getUserList() {
+  getRoster() {
     return this.joinedSockets()
-      .map(([, u]) => ({ username: u.username, isOwner: !!u.isOwner, isAdmin: !!u.isAdmin, isVIP: !!u.isVIP }))
-      .sort((a, b) => a.username.localeCompare(b.username));
+      .map(([, u]) => ({ name: u.name, isOwner: !!u.isOwner, isAdmin: !!u.isAdmin, isVIP: !!u.isVIP }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  voiceUsers(channel) {
-    return this.joinedSockets().filter(([, u]) => u.voice === channel).map(([, u]) => u.username);
+  avMembers(board) {
+    return this.joinedSockets().filter(([, u]) => u.av === board).map(([, u]) => u.name);
   }
 
-  isParticipant(chatId, uuid) {
-    const parts = typeof chatId === 'string' ? this.dmParticipants.get(chatId) : null;
+  isLinkMember(thread, uuid) {
+    const parts = typeof thread === 'string' ? this.linkMembers.get(thread) : null;
     return !!parts && parts.some((p) => p.uuid === uuid);
   }
 
@@ -329,15 +313,14 @@ export class ChatRoom {
     return !!(moderator.isAdmin && !target.isAdmin);
   }
 
-  // Returns the online target if `admin` is allowed to act on them, else tells the admin why.
-  modTarget(ws, admin, username) {
-    const t = this.findUser(username);
+  modTarget(ws, admin, name) {
+    const t = this.findMember(name);
     if (!t) {
-      send(ws, { type: 'error', message: 'User not online' });
+      send(ws, { type: 'fault', message: 'Member not online' });
       return null;
     }
     if (!this.canModerate(admin, t.user)) {
-      send(ws, { type: 'error', message: 'Cannot moderate this user' });
+      send(ws, { type: 'fault', message: 'Not permitted' });
       return null;
     }
     return t;
@@ -348,68 +331,67 @@ export class ChatRoom {
   dispatch(ws, data) {
     const user = ws.deserializeAttachment() || {};
 
-    if (data.type === 'join') return this.onJoin(ws, data, user);
-    if (!user.username) return; // everything else requires a completed join
+    if (data.type === 'open') return this.onOpen(ws, data, user);
+    if (!user.name) return;
 
-    if (data.type.startsWith('admin') && !isStaff(user)) return;
+    if (data.type.startsWith('ctl') && !isStaff(user)) return;
 
     switch (data.type) {
-      case 'message': return this.onMessage(ws, data, user);
-      case 'privateMessage': return this.onPrivateMessage(ws, data, user);
-      case 'privateChatRequest': return this.onPrivateChatRequest(ws, data, user);
-      case 'privateChatResponse': return this.onPrivateChatResponse(ws, data, user);
-      case 'getHistory': return this.onGetHistory(ws, data, user);
-      case 'getPrivateHistory': return this.onGetPrivateHistory(ws, data, user);
-      case 'toggleReaction': return this.onToggleReaction(data, user);
-      case 'typing': return this.onTyping(ws, data, user);
-      case 'updateProfile': return this.onUpdateProfile(data, user);
-      case 'deleteMessage': return this.onDeleteMessage(ws, data, user);
-      case 'blockUser': return this.onBlockUser(ws, data, user);
-      case 'unblockUser': return this.onUnblockUser(ws, data, user);
+      case 'entry': return this.onEntry(ws, data, user);
+      case 'note': return this.onNote(ws, data, user);
+      case 'linkReq': return this.onLinkReq(ws, data, user);
+      case 'linkRes': return this.onLinkRes(ws, data, user);
+      case 'fetchLog': return this.onFetchLog(ws, data, user);
+      case 'fetchNoteLog': return this.onFetchNoteLog(ws, data, user);
+      case 'mark': return this.onMark(data, user);
+      case 'activity': return this.onActivity(ws, data, user);
+      case 'setProfile': return this.onSetProfile(data, user);
+      case 'drop': return this.onDrop(ws, data, user);
+      case 'hide': return this.onHide(ws, data, user);
+      case 'unhide': return this.onUnhide(ws, data, user);
 
-      case 'joinRoom': return this.onJoinRoom(ws, data, user);
-      case 'leaveRoom': return this.onLeaveRoom(ws, data, user);
+      case 'enterSpace': return this.onEnterSpace(ws, data, user);
+      case 'exitSpace': return this.onExitSpace(ws, data, user);
 
-      case 'joinVoice': return this.onJoinVoice(ws, data, user);
-      case 'leaveVoice': return this.leaveVoice(ws, user);
-      case 'voiceOffer': return this.relayVoice(user, data, 'voiceOffer', 'offer');
-      case 'voiceAnswer': return this.relayVoice(user, data, 'voiceAnswer', 'answer');
-      case 'voiceIceCandidate': return this.relayVoice(user, data, 'voiceIceCandidate', 'candidate');
+      case 'avOn': return this.onAvOn(ws, data, user);
+      case 'avOff': return this.avOff(ws, user);
+      case 'avOffer': return this.relayAv(user, data, 'avOffer', 'offer');
+      case 'avAnswer': return this.relayAv(user, data, 'avAnswer', 'answer');
+      case 'avCand': return this.relayAv(user, data, 'avCand', 'candidate');
 
-      case 'adminKick': return this.onAdminKick(ws, data, user);
-      case 'adminTimeout': return this.onAdminTimeout(ws, data, user, 'timedOut');
-      case 'adminForceMute': return this.onAdminTimeout(ws, data, user, 'forceMute');
-      case 'adminBan': return this.onAdminBan(ws, data, user);
-      case 'adminUnban': return this.onAdminUnban(ws, data);
-      case 'adminUnbanIP': return this.onAdminUnbanIP(ws, data);
-      case 'adminUnrestrict': return this.onAdminUnrestrict(ws, data);
-      case 'adminWarning': return this.onAdminWarning(ws, data, user);
-      case 'adminDeleteMessage': return this.onAdminDeleteMessage(ws, data, user);
-      case 'adminGetBanList': return this.onAdminGetBanList(ws);
-      case 'adminBroadcast': return this.onAdminBroadcast(ws, data);
-      case 'adminSlowMode': return this.onAdminSlowMode(ws, data);
-      case 'adminClearChat': return this.onAdminClearChat(ws, data);
-      case 'adminEffect': return this.onAdminEffect(ws, data, user);
-      case 'adminConfetti': return this.onAdminConfettiAll(ws);
-      case 'adminForceDisconnect': return this.onAdminForceDisconnect(ws, data, user);
+      case 'ctlEject': return this.onCtlEject(ws, data, user);
+      case 'ctlPause': return this.onCtlPause(ws, data, user, 'paused');
+      case 'ctlSilence': return this.onCtlPause(ws, data, user, 'silenced');
+      case 'ctlBar': return this.onCtlBar(ws, data, user);
+      case 'ctlUnbar': return this.onCtlUnbar(ws, data);
+      case 'ctlUnbarIp': return this.onCtlUnbarIp(ws, data);
+      case 'ctlLift': return this.onCtlLift(ws, data);
+      case 'ctlNotice': return this.onCtlNotice(ws, data, user);
+      case 'ctlDrop': return this.onCtlDrop(ws, data, user);
+      case 'ctlList': return this.onCtlList(ws);
+      case 'ctlAnnounce': return this.onCtlAnnounce(ws, data);
+      case 'ctlPace': return this.onCtlPace(ws, data);
+      case 'ctlClear': return this.onCtlClear(ws, data);
+      case 'ctlFx': return this.onCtlFx(ws, data, user);
+      case 'ctlFxAll': return this.onCtlFxAll(ws);
+      case 'ctlCut': return this.onCtlCut(ws, data, user);
     }
   }
 
-  // ----- join -----
+  // ----- open -----
 
   reject(ws, type, message, code = 4001) {
     send(ws, { type, message });
     try { ws.close(code, type); } catch { /* ignore */ }
   }
 
-  onJoin(ws, data, att) {
-    if (att.username) return; // already joined on this socket
+  onOpen(ws, data, att) {
+    if (att.name) return;
 
     const ip = att.ip || 'unknown';
-    const name = cleanName(data.username);
-    if (!name) return this.reject(ws, 'joinError', 'Choose a username');
+    const name = cleanName(data.name);
+    if (!name) return this.reject(ws, 'denied', 'Choose a name');
 
-    // Work out the role first: staff are immune to username bans.
     let isOwner = false;
     let isAdmin = false;
     let isVIP = false;
@@ -418,536 +400,517 @@ export class ChatRoom {
       if (safeEqual(password, this.env.OWNER_PASSWORD)) { isOwner = true; isAdmin = true; }
       else if (safeEqual(password, this.env.ADMIN_PASSWORD)) isAdmin = true;
       else if (safeEqual(password, this.env.VIP_PASSWORD)) isVIP = true;
-      else return this.reject(ws, 'joinError', 'Incorrect password');
+      else return this.reject(ws, 'denied', 'Incorrect key');
     }
 
-    if (!isAdmin && this.bannedUsers.has(lc(name))) {
-      return this.reject(ws, 'banned', 'You are banned from this server', 4003);
+    if (!isAdmin && this.barredNames.has(lc(name))) {
+      return this.reject(ws, 'barred', 'Access denied', 4003);
     }
 
-    // uuid is a secret the client keeps in localStorage; it identifies you across reconnects and DMs.
     const uuid = typeof data.uuid === 'string' && UUID_RE.test(data.uuid) ? data.uuid : crypto.randomUUID();
 
     let finalName = name;
-    let staleVoice = null;
-    let staleRooms = [];
-    const clash = this.findUser(name);
+    let staleAv = null;
+    let staleSpaces = [];
+    const clash = this.findMember(name);
     if (clash) {
       if (clash.user.uuid === uuid) {
-        // Same person reconnecting before the old socket was noticed as dead: replace it.
-        staleVoice = clash.user.voice;
-        staleRooms = clash.user.rooms || [];
+        staleAv = clash.user.av;
+        staleSpaces = clash.user.spaces || [];
         clash.ws.serializeAttachment({ ip: clash.user.ip });
-        try { clash.ws.close(4000, 'Replaced by a new connection'); } catch { /* ignore */ }
+        try { clash.ws.close(4000, 'Replaced'); } catch { /* ignore */ }
       } else if (/^guest$/i.test(name)) {
         do {
           finalName = `Guest${1000 + Math.floor(Math.random() * 9000)}`;
-        } while (this.findUser(finalName));
+        } while (this.findMember(finalName));
       } else {
-        return this.reject(ws, 'joinError', 'That username is already in use');
+        return this.reject(ws, 'denied', 'That name is already in use');
       }
     }
 
     ws.serializeAttachment({
-      ip, uuid, username: finalName, isOwner, isAdmin, isVIP, voice: null, pending: [], rooms: []
+      ip, uuid, name: finalName, isOwner, isAdmin, isVIP, av: null, pending: [], spaces: []
     });
 
-    send(ws, { type: 'joined', uuid, username: finalName, isOwner, isAdmin, isVIP });
-    send(ws, { type: 'dmList', chats: this.dmListFor(uuid) });
-    send(ws, { type: 'blockList', users: [...(this.blocks.get(uuid)?.values() || [])] });
-    for (const ch of VOICE_CHANNELS) {
-      send(ws, { type: 'voiceUsers', channel: ch, users: this.voiceUsers(ch) });
+    send(ws, { type: 'ready', uuid, name: finalName, isOwner, isAdmin, isVIP });
+    send(ws, { type: 'linkList', links: this.linkListFor(uuid) });
+    send(ws, { type: 'hiddenList', members: [...(this.hidden.get(uuid)?.values() || [])] });
+    for (const b of AV_BOARDS) {
+      send(ws, { type: 'avMembers', board: b, members: this.avMembers(b) });
     }
-    this.broadcast({ type: 'userList', users: this.getUserList() });
-    if (staleVoice) {
-      this.broadcast({ type: 'voiceUserLeft', username: finalName, channel: staleVoice });
-      this.broadcast({ type: 'voiceUsers', channel: staleVoice, users: this.voiceUsers(staleVoice) });
+    this.broadcast({ type: 'roster', members: this.getRoster() });
+    if (staleAv) {
+      this.broadcast({ type: 'avLeft', name: finalName, board: staleAv });
+      this.broadcast({ type: 'avMembers', board: staleAv, members: this.avMembers(staleAv) });
     }
-    for (const code of staleRooms) this.broadcastRoomUsers(code);
+    for (const code of staleSpaces) this.broadcastSpaceMembers(code);
   }
 
-  dmListFor(uuid) {
-    const chats = [];
-    for (const [chatId, parts] of this.dmParticipants) {
+  linkListFor(uuid) {
+    const out = [];
+    for (const [thread, parts] of this.linkMembers) {
       if (!parts.some((p) => p.uuid === uuid)) continue;
       const other = parts.find((p) => p.uuid !== uuid);
-      if (other) chats.push({ chatId, with: other.username });
+      if (other) out.push({ thread, with: other.name });
     }
-    return chats;
+    return out;
   }
 
-  // ----- custom rooms -----
+  // ----- spaces -----
 
-  onJoinRoom(ws, data, user) {
-    const code = normRoom(data.code);
+  onEnterSpace(ws, data, user) {
+    const code = normSpace(data.code);
     if (code.length < 3) {
-      send(ws, { type: 'error', message: 'Room codes need 3-20 letters, numbers or dashes' });
+      send(ws, { type: 'fault', message: 'Codes need 3-20 letters, numbers or dashes' });
       return;
     }
     const restore = !!data.restore;
-    const rooms = user.rooms || [];
-    if (rooms.includes(code)) {
-      send(ws, { type: 'roomJoined', code, restore });
-      send(ws, { type: 'roomUsers', code, users: this.roomUsers(code) });
+    const spaces = user.spaces || [];
+    if (spaces.includes(code)) {
+      send(ws, { type: 'spaceIn', code, restore });
+      send(ws, { type: 'spaceMembers', code, members: this.spaceMembers(code) });
       return;
     }
-    if (rooms.length >= MAX_ROOMS_PER_USER) {
-      send(ws, { type: 'error', message: `You can be in at most ${MAX_ROOMS_PER_USER} rooms` });
+    if (spaces.length >= MAX_SPACES_PER_USER) {
+      send(ws, { type: 'fault', message: `Limit of ${MAX_SPACES_PER_USER} spaces` });
       return;
     }
 
-    const channel = 'room:' + code;
-    if (!this.channels[channel]) {
-      if (this.roomCount() >= MAX_ROOMS_TOTAL) this.pruneRooms();
-      if (this.roomCount() >= MAX_ROOMS_TOTAL) {
-        send(ws, { type: 'error', message: 'Too many rooms right now, try again later' });
+    const board = 'space:' + code;
+    if (!this.boards[board]) {
+      if (this.spaceCount() >= MAX_SPACES_TOTAL) this.pruneSpaces();
+      if (this.spaceCount() >= MAX_SPACES_TOTAL) {
+        send(ws, { type: 'fault', message: 'Too many spaces right now, try again later' });
         return;
       }
-      this.channels[channel] = [];
+      this.boards[board] = [];
     }
 
-    user.rooms = [...rooms, code];
+    user.spaces = [...spaces, code];
     ws.serializeAttachment(user);
-    send(ws, { type: 'roomJoined', code, restore });
-    this.broadcastRoomUsers(code);
+    send(ws, { type: 'spaceIn', code, restore });
+    this.broadcastSpaceMembers(code);
   }
 
-  onLeaveRoom(ws, data, user) {
-    const code = normRoom(data.code);
-    if (!(user.rooms || []).includes(code)) return;
-    user.rooms = user.rooms.filter((r) => r !== code);
+  onExitSpace(ws, data, user) {
+    const code = normSpace(data.code);
+    if (!(user.spaces || []).includes(code)) return;
+    user.spaces = user.spaces.filter((r) => r !== code);
     ws.serializeAttachment(user);
-    send(ws, { type: 'roomLeft', code });
-    this.broadcastRoomUsers(code);
+    send(ws, { type: 'spaceOut', code });
+    this.broadcastSpaceMembers(code);
   }
 
-  // ----- messages -----
+  // ----- entries -----
 
-  buildMessage(user, data, text, imageUrl) {
-    const profile = this.userProfiles.get(lc(user.username));
+  buildItem(user, data, body, media) {
+    const profile = this.profiles.get(lc(user.name));
     return {
       id: crypto.randomUUID(),
-      author: user.username,
-      text,
-      timestamp: this.nextTimestamp(),
+      by: user.name,
+      body,
+      ts: this.nextTimestamp(),
       role: roleOf(user),
       color: profile?.color || 'default',
-      replyTo: typeof data.replyTo === 'string' ? data.replyTo.slice(0, 64) : null,
-      reactions: {},
-      imageUrl
+      ref: typeof data.ref === 'string' ? data.ref.slice(0, 64) : null,
+      marks: {},
+      media
     };
   }
 
-  // Validates text + image. Returns { text, imageUrl } or null (after telling the sender why).
-  // Images are either uploaded files (data: URLs) or GIPHY links from the GIF picker.
   readContent(ws, data) {
-    const text = typeof data.text === 'string' ? data.text.slice(0, MAX_TEXT) : '';
-    let imageUrl = null;
-    if (data.imageUrl != null) {
-      const u = data.imageUrl;
-      const okData = typeof u === 'string' && u.startsWith('data:image/') && u.length <= MAX_IMAGE_CHARS;
-      const okGif = typeof u === 'string' && u.length <= 500 && GIF_URL_RE.test(u);
-      if (!okData && !okGif) {
-        send(ws, { type: 'error', message: 'Image is invalid or too large' });
+    const body = typeof data.body === 'string' ? data.body.slice(0, MAX_TEXT) : '';
+    let media = null;
+    if (data.media != null) {
+      const u = data.media;
+      const okData = typeof u === 'string' && u.startsWith('data:image/') && u.length <= MAX_MEDIA_CHARS;
+      const okAnim = typeof u === 'string' && u.length <= 500 && ANIM_URL_RE.test(u);
+      if (!okData && !okAnim) {
+        send(ws, { type: 'fault', message: 'Attachment is invalid or too large' });
         return null;
       }
-      imageUrl = u;
+      media = u;
     }
-    if (!text.trim() && !imageUrl) return null;
-    return { text, imageUrl };
+    if (!body.trim() && !media) return null;
+    return { body, media };
   }
 
-  // True if the user may speak right now (not muted / timed out).
-  checkMuted(ws, user) {
-    const until = this.mutedUntil.get(lc(user.username));
+  checkPaused(ws, user) {
+    const until = this.pausedUntil.get(lc(user.name));
     if (until && until > Date.now()) {
-      send(ws, { type: 'error', message: `You are muted for another ${Math.ceil((until - Date.now()) / 1000)}s` });
+      send(ws, { type: 'fault', message: `Paused for another ${Math.ceil((until - Date.now()) / 1000)}s` });
       return false;
     }
     return true;
   }
 
-  // 'mute' | 'dm' | null (checks both the user's IP and username).
-  restrictionOf(user) {
-    const a = this.restrictedIPs.get(user.ip);
-    const b = this.restrictedUsers.get(lc(user.username));
+  limitOf(user) {
+    const a = this.limitedIPs.get(user.ip);
+    const b = this.limitedNames.get(lc(user.name));
     return a === 'mute' || b === 'mute' ? 'mute' : a || b || null;
   }
 
-  // 'mute' blocks everything; 'dm' blocks channels/rooms but allows DMs.
-  checkRestricted(ws, user, isDM) {
-    const r = this.restrictionOf(user);
-    if (r === 'mute' || (r === 'dm' && !isDM)) {
-      send(ws, { type: 'error', message: r === 'mute' ? 'You are muted and cannot send messages' : 'You can only send direct messages' });
+  checkLimited(ws, user, isLink) {
+    const r = this.limitOf(user);
+    if (r === 'mute' || (r === 'dm' && !isLink)) {
+      send(ws, { type: 'fault', message: r === 'mute' ? 'Posting is disabled for you' : 'Only private threads are allowed for you' });
       return false;
     }
     return true;
   }
 
-  // Auto slow mode for people who flood the chat. Staff and VIPs are exempt.
-  checkSpam(ws, user) {
+  checkBurst(ws, user) {
     if (isStaff(user) || user.isVIP) return true;
-    const key = lc(user.username);
+    const key = lc(user.name);
     const now = Date.now();
-    const recent = (this.recentMsgs.get(key) || []).filter((t) => now - t < SPAM_WINDOW_MS);
-    const until = this.autoSlowUntil.get(key) || 0;
-    if (until > now && recent.length && now - recent[recent.length - 1] < AUTO_SLOW_GAP_MS) {
-      const wait = Math.ceil((AUTO_SLOW_GAP_MS - (now - recent[recent.length - 1])) / 1000);
-      send(ws, { type: 'error', message: `Slow mode: wait ${wait}s between messages` });
+    const recent = (this.recentPosts.get(key) || []).filter((t) => now - t < BURST_WINDOW_MS);
+    const until = this.autoPaceUntil.get(key) || 0;
+    if (until > now && recent.length && now - recent[recent.length - 1] < AUTO_PACE_GAP_MS) {
+      const wait = Math.ceil((AUTO_PACE_GAP_MS - (now - recent[recent.length - 1])) / 1000);
+      send(ws, { type: 'fault', message: `Pace limit: wait ${wait}s` });
       return false;
     }
     recent.push(now);
-    this.recentMsgs.set(key, recent);
-    if (recent.length >= SPAM_MESSAGES && until <= now) {
-      this.autoSlowUntil.set(key, now + AUTO_SLOW_MS);
-      send(ws, { type: 'error', message: 'You were sending messages too fast. Slow mode is on for 5 minutes.' });
+    this.recentPosts.set(key, recent);
+    if (recent.length >= BURST_COUNT && until <= now) {
+      this.autoPaceUntil.set(key, now + AUTO_PACE_MS);
+      send(ws, { type: 'fault', message: 'Too fast. Pace limit is on for 5 minutes.' });
     }
     return true;
   }
 
-  onMessage(ws, data, user) {
-    if (!validChannel(data.channel) || !this.canAccessChannel(user, data.channel)) return;
+  onEntry(ws, data, user) {
+    if (!validBoard(data.board) || !this.canAccessBoard(user, data.board)) return;
     const content = this.readContent(ws, data);
     if (!content) return;
-    if (!this.checkMuted(ws, user)) return;
-    if (!this.checkRestricted(ws, user, false)) return;
+    if (!this.checkPaused(ws, user)) return;
+    if (!this.checkLimited(ws, user, false)) return;
 
-    const key = lc(user.username);
-    if (this.slowMode.enabled && !isStaff(user)) {
-      const last = this.lastMessageAt.get(key);
-      if (last && Date.now() - last < this.slowMode.duration * 1000) {
-        send(ws, { type: 'error', message: `Slow mode: wait ${this.slowMode.duration}s between messages` });
+    const key = lc(user.name);
+    if (this.pace.enabled && !isStaff(user)) {
+      const last = this.lastPostAt.get(key);
+      if (last && Date.now() - last < this.pace.duration * 1000) {
+        send(ws, { type: 'fault', message: `Pace limit: wait ${this.pace.duration}s` });
         return;
       }
     }
-    if (!this.checkSpam(ws, user)) return;
-    this.lastMessageAt.set(key, Date.now());
+    if (!this.checkBurst(ws, user)) return;
+    this.lastPostAt.set(key, Date.now());
 
-    const message = this.buildMessage(user, data, content.text, content.imageUrl);
-    message.channel = data.channel;
+    const item = this.buildItem(user, data, content.body, content.media);
+    item.board = data.board;
 
-    const list = this.chanList(data.channel, true);
+    const list = this.boardList(data.board, true);
     if (!list) return;
-    list.push(message);
-    bg(this.ctx.storage.put(chKey(message), message));
-    while (list.length > MAX_CHANNEL_HISTORY) {
-      bg(this.ctx.storage.delete(chKey(list.shift())));
+    list.push(item);
+    bg(this.ctx.storage.put(bKey(item), item));
+    while (list.length > MAX_BOARD_LOG) {
+      bg(this.ctx.storage.delete(bKey(list.shift())));
     }
 
-    this.broadcastChannel(data.channel, { type: 'message', message });
+    this.broadcastBoard(data.board, { type: 'entry', item });
   }
 
-  onPrivateMessage(ws, data, user) {
-    if (!this.isParticipant(data.chatId, user.uuid)) return;
+  onNote(ws, data, user) {
+    if (!this.isLinkMember(data.thread, user.uuid)) return;
     const content = this.readContent(ws, data);
     if (!content) return;
-    if (!this.checkMuted(ws, user)) return;
-    if (!this.checkRestricted(ws, user, true)) return;
+    if (!this.checkPaused(ws, user)) return;
+    if (!this.checkLimited(ws, user, true)) return;
 
-    // Blocking works both ways: neither person can send while a block exists.
-    const other = this.dmParticipants.get(data.chatId).find((p) => p.uuid !== user.uuid);
+    const other = this.linkMembers.get(data.thread).find((p) => p.uuid !== user.uuid);
     if (other) {
-      if (this.isBlockedBy(other.uuid, user.uuid)) {
-        send(ws, { type: 'error', message: "You can't send messages to this user" });
+      if (this.isHiddenBy(other.uuid, user.uuid)) {
+        send(ws, { type: 'fault', message: 'Not available' });
         return;
       }
-      if (this.isBlockedBy(user.uuid, other.uuid)) {
-        send(ws, { type: 'error', message: 'You blocked this user. Unblock them to send messages.' });
+      if (this.isHiddenBy(user.uuid, other.uuid)) {
+        send(ws, { type: 'fault', message: 'You hid this member. Unhide them first.' });
         return;
       }
     }
-    if (!this.checkSpam(ws, user)) return;
+    if (!this.checkBurst(ws, user)) return;
 
-    const message = this.buildMessage(user, data, content.text, content.imageUrl);
-    message.chatId = data.chatId;
+    const item = this.buildItem(user, data, content.body, content.media);
+    item.thread = data.thread;
 
-    if (!this.privateChats.has(data.chatId)) this.privateChats.set(data.chatId, []);
-    const list = this.privateChats.get(data.chatId);
-    list.push(message);
-    bg(this.ctx.storage.put(dmKey(message), message));
-    while (list.length > MAX_DM_HISTORY) {
-      bg(this.ctx.storage.delete(dmKey(list.shift())));
+    if (!this.links.has(data.thread)) this.links.set(data.thread, []);
+    const list = this.links.get(data.thread);
+    list.push(item);
+    bg(this.ctx.storage.put(tKey(item), item));
+    while (list.length > MAX_LINK_LOG) {
+      bg(this.ctx.storage.delete(tKey(list.shift())));
     }
 
-    const uuids = this.dmParticipants.get(data.chatId).map((p) => p.uuid);
-    this.sendToUuids(uuids, { type: 'privateMessage', message });
+    const uuids = this.linkMembers.get(data.thread).map((p) => p.uuid);
+    this.sendToUuids(uuids, { type: 'note', item });
   }
 
-  // Anyone can delete their own messages (channels, rooms and DMs).
-  onDeleteMessage(ws, data, user) {
-    const mine = (m) => m && lc(m.author) === lc(user.username);
-    if (data.isPrivate) {
-      if (!this.isParticipant(data.chatId, user.uuid)) return;
-      const list = this.privateChats.get(data.chatId) || [];
-      const i = list.findIndex((m) => m.id === data.messageId);
+  onDrop(ws, data, user) {
+    const mine = (m) => m && lc(m.by) === lc(user.name);
+    if (data.priv) {
+      if (!this.isLinkMember(data.thread, user.uuid)) return;
+      const list = this.links.get(data.thread) || [];
+      const i = list.findIndex((m) => m.id === data.id);
       if (i === -1 || !mine(list[i])) return;
       const [removed] = list.splice(i, 1);
-      bg(this.ctx.storage.delete(dmKey(removed)));
-      this.sendToUuids(this.dmParticipants.get(data.chatId).map((p) => p.uuid),
-        { type: 'privateMessageDeleted', chatId: data.chatId, messageId: removed.id });
+      bg(this.ctx.storage.delete(tKey(removed)));
+      this.sendToUuids(this.linkMembers.get(data.thread).map((p) => p.uuid),
+        { type: 'noteDropped', thread: data.thread, id: removed.id });
       return;
     }
-    if (!validChannel(data.channel) || !this.canAccessChannel(user, data.channel)) return;
-    const list = this.chanList(data.channel) || [];
-    const i = list.findIndex((m) => m.id === data.messageId);
+    if (!validBoard(data.board) || !this.canAccessBoard(user, data.board)) return;
+    const list = this.boardList(data.board) || [];
+    const i = list.findIndex((m) => m.id === data.id);
     if (i === -1 || !mine(list[i])) return;
     const [removed] = list.splice(i, 1);
-    bg(this.ctx.storage.delete(chKey(removed)));
-    this.broadcastChannel(data.channel, { type: 'messageDeleted', messageId: removed.id, channel: data.channel });
+    bg(this.ctx.storage.delete(bKey(removed)));
+    this.broadcastBoard(data.board, { type: 'dropped', id: removed.id, board: data.board });
   }
 
-  onGetHistory(ws, data, user) {
-    if (!validChannel(data.channel) || !this.canAccessChannel(user, data.channel)) return;
-    send(ws, { type: 'history', channel: data.channel, messages: this.chanList(data.channel) || [] });
+  onFetchLog(ws, data, user) {
+    if (!validBoard(data.board) || !this.canAccessBoard(user, data.board)) return;
+    send(ws, { type: 'log', board: data.board, items: this.boardList(data.board) || [] });
   }
 
-  onGetPrivateHistory(ws, data, user) {
-    if (!this.isParticipant(data.chatId, user.uuid)) return;
-    send(ws, { type: 'privateHistory', chatId: data.chatId, messages: this.privateChats.get(data.chatId) || [] });
+  onFetchNoteLog(ws, data, user) {
+    if (!this.isLinkMember(data.thread, user.uuid)) return;
+    send(ws, { type: 'noteLog', thread: data.thread, items: this.links.get(data.thread) || [] });
   }
 
-  onToggleReaction(data, user) {
+  onMark(data, user) {
     if (typeof data.emoji !== 'string' || !EMOJI_RE.test(data.emoji)) return;
 
-    let message;
-    let recipients = null; // null = everyone who can see the channel
-    if (data.isPrivate) {
-      if (!this.isParticipant(data.chatId, user.uuid)) return;
-      message = (this.privateChats.get(data.chatId) || []).find((m) => m.id === data.messageId);
-      recipients = this.dmParticipants.get(data.chatId).map((p) => p.uuid);
+    let item;
+    let recipients = null;
+    if (data.priv) {
+      if (!this.isLinkMember(data.thread, user.uuid)) return;
+      item = (this.links.get(data.thread) || []).find((m) => m.id === data.id);
+      recipients = this.linkMembers.get(data.thread).map((p) => p.uuid);
     } else {
-      if (!validChannel(data.channel) || !this.canAccessChannel(user, data.channel)) return;
-      message = (this.chanList(data.channel) || []).find((m) => m.id === data.messageId);
+      if (!validBoard(data.board) || !this.canAccessBoard(user, data.board)) return;
+      item = (this.boardList(data.board) || []).find((m) => m.id === data.id);
     }
-    if (!message) return;
+    if (!item) return;
 
-    const users = message.reactions[data.emoji] || [];
-    const i = users.indexOf(user.username);
-    if (i === -1) users.push(user.username);
-    else users.splice(i, 1);
-    if (users.length) message.reactions[data.emoji] = users;
-    else delete message.reactions[data.emoji];
+    const who = item.marks[data.emoji] || [];
+    const i = who.indexOf(user.name);
+    if (i === -1) who.push(user.name);
+    else who.splice(i, 1);
+    if (who.length) item.marks[data.emoji] = who;
+    else delete item.marks[data.emoji];
 
-    bg(this.ctx.storage.put(data.isPrivate ? dmKey(message) : chKey(message), message));
+    bg(this.ctx.storage.put(data.priv ? tKey(item) : bKey(item), item));
 
     const update = {
-      type: 'reactionUpdate',
-      messageId: message.id,
-      reactions: message.reactions,
-      isPrivate: !!data.isPrivate,
-      channel: message.channel,
-      chatId: message.chatId
+      type: 'markUpdate',
+      id: item.id,
+      marks: item.marks,
+      priv: !!data.priv,
+      board: item.board,
+      thread: item.thread
     };
     if (recipients) this.sendToUuids(recipients, update);
-    else this.broadcastChannel(message.channel, update);
+    else this.broadcastBoard(item.board, update);
   }
 
-  onTyping(ws, data, user) {
-    const isTyping = !!data.isTyping;
-    if (data.isPrivate) {
-      if (!this.isParticipant(data.chatId, user.uuid)) return;
-      const others = this.dmParticipants.get(data.chatId).map((p) => p.uuid).filter((u) => u !== user.uuid);
-      this.sendToUuids(others, { type: 'typing', username: user.username, isTyping, isPrivate: true, chatId: data.chatId });
-    } else if (validChannel(data.channel) && this.canAccessChannel(user, data.channel)) {
-      this.broadcastChannel(data.channel, { type: 'typing', username: user.username, isTyping, isPrivate: false, channel: data.channel }, ws);
+  onActivity(ws, data, user) {
+    const active = !!data.active;
+    if (data.priv) {
+      if (!this.isLinkMember(data.thread, user.uuid)) return;
+      const others = this.linkMembers.get(data.thread).map((p) => p.uuid).filter((u) => u !== user.uuid);
+      this.sendToUuids(others, { type: 'activity', name: user.name, active, priv: true, thread: data.thread });
+    } else if (validBoard(data.board) && this.canAccessBoard(user, data.board)) {
+      this.broadcastBoard(data.board, { type: 'activity', name: user.name, active, priv: false, board: data.board }, ws);
     }
   }
 
-  onUpdateProfile(data, user) {
-    const color = COLORS.includes(data.profileColor) ? data.profileColor : 'default';
-    this.userProfiles.set(lc(user.username), { color });
+  onSetProfile(data, user) {
+    const color = COLORS.includes(data.color) ? data.color : 'default';
+    this.profiles.set(lc(user.name), { color });
     this.saveMeta();
   }
 
-  // ----- blocking -----
+  // ----- hiding members -----
 
-  isBlockedBy(blockerUuid, otherUuid) {
-    return !!this.blocks.get(blockerUuid)?.has(otherUuid);
+  isHiddenBy(hiderUuid, otherUuid) {
+    return !!this.hidden.get(hiderUuid)?.has(otherUuid);
   }
 
-  sendBlockList(ws, user) {
-    send(ws, { type: 'blockList', users: [...(this.blocks.get(user.uuid)?.values() || [])] });
+  sendHiddenList(ws, user) {
+    send(ws, { type: 'hiddenList', members: [...(this.hidden.get(user.uuid)?.values() || [])] });
   }
 
-  onBlockUser(ws, data, user) {
-    const t = this.findUser(data.targetUsername);
+  onHide(ws, data, user) {
+    const t = this.findMember(data.target);
     if (!t || t.user.uuid === user.uuid) {
-      send(ws, { type: 'error', message: 'User not online' });
+      send(ws, { type: 'fault', message: 'Member not online' });
       return;
     }
-    const mine = this.blocks.get(user.uuid) || new Map();
-    if (mine.size >= MAX_BLOCKS && !mine.has(t.user.uuid)) {
-      send(ws, { type: 'error', message: 'Your block list is full' });
+    const mine = this.hidden.get(user.uuid) || new Map();
+    if (mine.size >= MAX_HIDDEN && !mine.has(t.user.uuid)) {
+      send(ws, { type: 'fault', message: 'Your hidden list is full' });
       return;
     }
-    mine.set(t.user.uuid, t.user.username);
-    this.blocks.set(user.uuid, mine);
+    mine.set(t.user.uuid, t.user.name);
+    this.hidden.set(user.uuid, mine);
     this.saveMeta();
-    this.sendBlockList(ws, user);
+    this.sendHiddenList(ws, user);
   }
 
-  onUnblockUser(ws, data, user) {
-    const mine = this.blocks.get(user.uuid);
+  onUnhide(ws, data, user) {
+    const mine = this.hidden.get(user.uuid);
     if (!mine) return;
-    const name = lc(data.username ?? '');
+    const name = lc(data.name ?? '');
     for (const [id, n] of mine) if (lc(n) === name) mine.delete(id);
-    if (!mine.size) this.blocks.delete(user.uuid);
+    if (!mine.size) this.hidden.delete(user.uuid);
     this.saveMeta();
-    this.sendBlockList(ws, user);
+    this.sendHiddenList(ws, user);
   }
 
-  // ----- direct message requests -----
+  // ----- private threads -----
 
-  onPrivateChatRequest(ws, data, user) {
-    const target = this.findUser(data.targetUsername);
+  onLinkReq(ws, data, user) {
+    const target = this.findMember(data.target);
     if (!target || target.user.uuid === user.uuid) {
-      send(ws, { type: 'error', message: 'User not online' });
+      send(ws, { type: 'fault', message: 'Member not online' });
       return;
     }
-    if (this.isBlockedBy(target.user.uuid, user.uuid)) {
-      send(ws, { type: 'error', message: "You can't message this user" });
+    if (this.isHiddenBy(target.user.uuid, user.uuid)) {
+      send(ws, { type: 'fault', message: 'Not available' });
       return;
     }
-    if (this.isBlockedBy(user.uuid, target.user.uuid)) {
-      send(ws, { type: 'error', message: 'You blocked this user. Unblock them first.' });
+    if (this.isHiddenBy(user.uuid, target.user.uuid)) {
+      send(ws, { type: 'fault', message: 'You hid this member. Unhide them first.' });
       return;
     }
 
-    const existing = this.findChat(user.uuid, target.user.uuid);
+    const existing = this.findLink(user.uuid, target.user.uuid);
     if (existing) {
-      // Chat already exists: just open it for the requester.
-      send(ws, { type: 'privateChatAccepted', chatId: existing, with: target.user.username });
+      send(ws, { type: 'linkOk', thread: existing, with: target.user.name });
       return;
     }
 
-    // Remember the request on the target's socket so it survives hibernation.
     const pending = [...(target.user.pending || []).filter((u) => u !== user.uuid), user.uuid].slice(-10);
     target.ws.serializeAttachment({ ...target.user, pending });
-    send(target.ws, { type: 'privateChatRequest', from: user.username });
+    send(target.ws, { type: 'linkReq', from: user.name });
   }
 
-  onPrivateChatResponse(ws, data, user) {
-    const requester = this.findUser(data.from);
+  onLinkRes(ws, data, user) {
+    const requester = this.findMember(data.from);
     if (!requester) return;
 
-    // Only honour responses to a real, pending request.
     const pending = user.pending || [];
     if (!pending.includes(requester.user.uuid)) return;
     ws.serializeAttachment({ ...user, pending: pending.filter((u) => u !== requester.user.uuid) });
 
     if (!data.accepted) {
-      send(requester.ws, { type: 'privateChatRejected', by: user.username });
+      send(requester.ws, { type: 'linkNo', by: user.name });
       return;
     }
 
-    let chatId = this.findChat(user.uuid, requester.user.uuid);
-    if (!chatId) {
-      chatId = crypto.randomUUID();
-      this.dmParticipants.set(chatId, [
-        { uuid: user.uuid, username: user.username },
-        { uuid: requester.user.uuid, username: requester.user.username }
+    let thread = this.findLink(user.uuid, requester.user.uuid);
+    if (!thread) {
+      thread = crypto.randomUUID();
+      this.linkMembers.set(thread, [
+        { uuid: user.uuid, name: user.name },
+        { uuid: requester.user.uuid, name: requester.user.name }
       ]);
-      this.privateChats.set(chatId, []);
+      this.links.set(thread, []);
       this.saveMeta();
     }
-    send(ws, { type: 'privateChatAccepted', chatId, with: requester.user.username });
-    send(requester.ws, { type: 'privateChatAccepted', chatId, with: user.username });
+    send(ws, { type: 'linkOk', thread, with: requester.user.name });
+    send(requester.ws, { type: 'linkOk', thread, with: user.name });
   }
 
-  findChat(uuidA, uuidB) {
-    for (const [chatId, parts] of this.dmParticipants) {
-      if (parts.some((p) => p.uuid === uuidA) && parts.some((p) => p.uuid === uuidB)) return chatId;
+  findLink(uuidA, uuidB) {
+    for (const [thread, parts] of this.linkMembers) {
+      if (parts.some((p) => p.uuid === uuidA) && parts.some((p) => p.uuid === uuidB)) return thread;
     }
     return null;
   }
 
-  // ----- voice (signalling only; audio flows peer-to-peer over WebRTC) -----
+  // ----- audio (signalling only) -----
 
-  onJoinVoice(ws, data, user) {
-    const channel = data.channel;
-    if (!VOICE_CHANNELS.includes(channel) || user.voice === channel) return;
-    if (user.voice) this.leaveVoice(ws, user);
+  onAvOn(ws, data, user) {
+    const board = data.board;
+    if (!AV_BOARDS.includes(board) || user.av === board) return;
+    if (user.av) this.avOff(ws, user);
 
-    const peers = this.voiceUsers(channel); // everyone already there (not including us)
-    user.voice = channel;
+    const peers = this.avMembers(board);
+    user.av = board;
     ws.serializeAttachment(user);
 
-    // The newcomer is told who to call; existing members just wait for offers.
-    send(ws, { type: 'voiceJoined', channel, peers });
-    this.broadcast({ type: 'voiceUsers', channel, users: this.voiceUsers(channel) });
+    send(ws, { type: 'avJoined', board, peers });
+    this.broadcast({ type: 'avMembers', board, members: this.avMembers(board) });
   }
 
-  leaveVoice(ws, user) {
-    const channel = user.voice;
-    if (!channel) return;
-    user.voice = null;
+  avOff(ws, user) {
+    const board = user.av;
+    if (!board) return;
+    user.av = null;
     ws.serializeAttachment(user);
-    this.broadcast({ type: 'voiceUserLeft', username: user.username, channel });
-    this.broadcast({ type: 'voiceUsers', channel, users: this.voiceUsers(channel) });
+    this.broadcast({ type: 'avLeft', name: user.name, board });
+    this.broadcast({ type: 'avMembers', board, members: this.avMembers(board) });
   }
 
-  relayVoice(user, data, type, key) {
-    if (!user.voice || data[key] == null) return;
+  relayAv(user, data, type, key) {
+    if (!user.av || data[key] == null) return;
     if (JSON.stringify(data[key]).length > 20000) return;
-    const target = this.findUser(data.to);
-    if (!target || target.user.voice !== user.voice) return;
-    send(target.ws, { type, from: user.username, channel: user.voice, [key]: data[key] });
+    const target = this.findMember(data.to);
+    if (!target || target.user.av !== user.av) return;
+    send(target.ws, { type, from: user.name, board: user.av, [key]: data[key] });
   }
 
-  // ----- admin actions -----
+  // ----- control actions -----
 
   ok(ws, message) {
-    send(ws, { type: 'adminActionSuccess', message });
+    send(ws, { type: 'ctlOk', message });
   }
 
-  onAdminKick(ws, data, admin) {
-    const t = this.modTarget(ws, admin, data.targetUsername);
+  onCtlEject(ws, data, admin) {
+    const t = this.modTarget(ws, admin, data.target);
     if (!t) return;
     const reason = cleanReason(data.reason);
     send(t.ws, {
-      type: 'kicked',
-      message: `You have been kicked${reason ? ': ' + reason : ''}`,
+      type: 'ejected',
+      message: `Session ended${reason ? ': ' + reason : ''}`,
       redirectUrl: 'https://google.com'
     });
-    try { t.ws.close(4002, 'kicked'); } catch { /* ignore */ }
-    this.ok(ws, `Kicked ${t.user.username}`);
+    try { t.ws.close(4002, 'ejected'); } catch { /* ignore */ }
+    this.ok(ws, `Ejected ${t.user.name}`);
   }
 
-  // Shared by "timeout" and "mute": the server enforces it, the client also locks its input box.
-  onAdminTimeout(ws, data, admin, eventType) {
-    const t = this.modTarget(ws, admin, data.targetUsername);
+  onCtlPause(ws, data, admin, eventType) {
+    const t = this.modTarget(ws, admin, data.target);
     if (!t) return;
     const duration = clamp(data.duration, 1, 86400, 60);
     const reason = cleanReason(data.reason);
-    this.mutedUntil.set(lc(t.user.username), Date.now() + duration * 1000);
-    const verb = eventType === 'timedOut' ? 'timed out' : 'muted';
+    this.pausedUntil.set(lc(t.user.name), Date.now() + duration * 1000);
+    const verb = eventType === 'paused' ? 'paused' : 'silenced';
     send(t.ws, {
       type: eventType,
       duration,
       message: `You have been ${verb} for ${duration}s${reason ? ': ' + reason : ''}`
     });
-    this.ok(ws, `${verb[0].toUpperCase()}${verb.slice(1)} ${t.user.username} for ${duration}s`);
+    this.ok(ws, `${verb[0].toUpperCase()}${verb.slice(1)} ${t.user.name} for ${duration}s`);
   }
 
-  // Ban modes:
-  //   full = kicked now and can't rejoin (the original behaviour)
-  //   mute = infinite mute: can't send anything, including DMs
-  //   dm   = can't type in channels/rooms, but DMs still work
-  onAdminBan(ws, data, admin) {
-    const name = cleanName(data.targetUsername);
+  onCtlBar(ws, data, admin) {
+    const name = cleanName(data.target);
     if (!name) return;
     const banType = ['username', 'ip', 'both'].includes(data.banType) ? data.banType : 'ip';
-    const mode = BAN_MODES.includes(data.mode) ? data.mode : 'full';
-    const banName = banType !== 'ip';
-    const banIp = banType !== 'username';
+    const mode = BAR_MODES.includes(data.mode) ? data.mode : 'full';
+    const barName = banType !== 'ip';
+    const barIp = banType !== 'username';
 
-    const t = this.findUser(name);
+    const t = this.findMember(name);
     if (t && !this.canModerate(admin, t.user)) {
-      send(ws, { type: 'error', message: 'Cannot moderate this user' });
+      send(ws, { type: 'fault', message: 'Not permitted' });
       return;
     }
-    if (!t && !banName) {
-      send(ws, { type: 'error', message: 'User is not online (an IP ban needs an online user)' });
+    if (!t && !barName) {
+      send(ws, { type: 'fault', message: 'Member is not online (an IP rule needs an online member)' });
       return;
     }
 
@@ -955,130 +918,130 @@ export class ChatRoom {
     const ip = t && t.user.ip && t.user.ip !== 'unknown' ? t.user.ip : null;
 
     if (mode === 'full') {
-      if (banName) this.bannedUsers.add(lc(name));
-      if (banIp && ip) this.bannedIPs.add(ip);
+      if (barName) this.barredNames.add(lc(name));
+      if (barIp && ip) this.barredIPs.add(ip);
       this.saveMeta();
       if (t) {
-        send(t.ws, { type: 'banned', message: `You have been banned${reason ? ': ' + reason : ''}` });
-        try { t.ws.close(4003, 'banned'); } catch { /* ignore */ }
+        send(t.ws, { type: 'barred', message: `Access removed${reason ? ': ' + reason : ''}` });
+        try { t.ws.close(4003, 'barred'); } catch { /* ignore */ }
       }
-      this.ok(ws, `Banned ${name}`);
+      this.ok(ws, `Barred ${name}`);
       return;
     }
 
-    if (banName) this.restrictedUsers.set(lc(name), mode);
-    if (banIp && ip) this.restrictedIPs.set(ip, mode);
+    if (barName) this.limitedNames.set(lc(name), mode);
+    if (barIp && ip) this.limitedIPs.set(ip, mode);
     this.saveMeta();
     if (t) {
       send(t.ws, {
-        type: 'restricted',
+        type: 'limited',
         message: (mode === 'mute'
-          ? 'You have been muted and can no longer send messages'
-          : 'You can no longer chat in channels or rooms, but you can still send DMs') + (reason ? ': ' + reason : '')
+          ? 'Posting is now disabled for you'
+          : 'You can no longer post on boards or in spaces, private threads still work') + (reason ? ': ' + reason : '')
       });
     }
-    this.ok(ws, `${mode === 'mute' ? 'Muted' : 'Chat-blocked'} ${name} (until removed in the Bans tab)`);
+    this.ok(ws, `${mode === 'mute' ? 'Silenced' : 'Board-limited'} ${name} (until lifted in the list tab)`);
   }
 
-  onAdminUnban(ws, data) {
-    this.bannedUsers.delete(lc(data.username ?? ''));
+  onCtlUnbar(ws, data) {
+    this.barredNames.delete(lc(data.name ?? ''));
     this.saveMeta();
-    this.ok(ws, `Unbanned ${data.username}`);
-    this.onAdminGetBanList(ws);
+    this.ok(ws, `Restored ${data.name}`);
+    this.onCtlList(ws);
   }
 
-  onAdminUnbanIP(ws, data) {
-    this.bannedIPs.delete(data.ip);
+  onCtlUnbarIp(ws, data) {
+    this.barredIPs.delete(data.ip);
     this.saveMeta();
-    this.ok(ws, `Unbanned IP ${data.ip}`);
-    this.onAdminGetBanList(ws);
+    this.ok(ws, `Restored IP ${data.ip}`);
+    this.onCtlList(ws);
   }
 
-  onAdminUnrestrict(ws, data) {
-    if (data.kind === 'ip') this.restrictedIPs.delete(data.value);
-    else if (data.kind === 'user') this.restrictedUsers.delete(lc(data.value ?? ''));
+  onCtlLift(ws, data) {
+    if (data.kind === 'ip') this.limitedIPs.delete(data.value);
+    else if (data.kind === 'user') this.limitedNames.delete(lc(data.value ?? ''));
     else return;
     this.saveMeta();
-    this.ok(ws, `Removed restriction on ${data.value}`);
-    this.onAdminGetBanList(ws);
+    this.ok(ws, `Lifted limit on ${data.value}`);
+    this.onCtlList(ws);
   }
 
-  onAdminWarning(ws, data, admin) {
-    const t = this.modTarget(ws, admin, data.targetUsername);
+  onCtlNotice(ws, data, admin) {
+    const t = this.modTarget(ws, admin, data.target);
     if (!t) return;
-    const key = lc(t.user.username);
-    const count = (this.userWarnings.get(key) || 0) + 1;
-    this.userWarnings.set(key, count);
+    const key = lc(t.user.name);
+    const count = (this.notices.get(key) || 0) + 1;
+    this.notices.set(key, count);
     this.saveMeta();
-    send(t.ws, { type: 'warning', message: cleanReason(data.reason) || 'You have been warned', count });
-    this.ok(ws, `Warned ${t.user.username} (warning #${count})`);
+    send(t.ws, { type: 'notice', message: cleanReason(data.reason) || 'Notice issued', count });
+    this.ok(ws, `Notice #${count} sent to ${t.user.name}`);
   }
 
-  onAdminDeleteMessage(ws, data, user) {
-    if (!validChannel(data.channel) || !this.canAccessChannel(user, data.channel)) return;
-    const list = this.chanList(data.channel);
+  onCtlDrop(ws, data, user) {
+    if (!validBoard(data.board) || !this.canAccessBoard(user, data.board)) return;
+    const list = this.boardList(data.board);
     if (!list) return;
-    const i = list.findIndex((m) => m.id === data.messageId);
+    const i = list.findIndex((m) => m.id === data.id);
     if (i === -1) return;
     const [removed] = list.splice(i, 1);
-    bg(this.ctx.storage.delete(chKey(removed)));
-    this.broadcastChannel(data.channel, { type: 'messageDeleted', messageId: removed.id, channel: data.channel });
-    this.ok(ws, 'Message deleted');
+    bg(this.ctx.storage.delete(bKey(removed)));
+    this.broadcastBoard(data.board, { type: 'dropped', id: removed.id, board: data.board });
+    this.ok(ws, 'Entry removed');
   }
 
-  onAdminGetBanList(ws) {
+  onCtlList(ws) {
     const restricted = [
-      ...[...this.restrictedUsers].map(([value, mode]) => ({ kind: 'user', value, mode })),
-      ...[...this.restrictedIPs].map(([value, mode]) => ({ kind: 'ip', value, mode }))
+      ...[...this.limitedNames].map(([value, mode]) => ({ kind: 'user', value, mode })),
+      ...[...this.limitedIPs].map(([value, mode]) => ({ kind: 'ip', value, mode }))
     ];
-    send(ws, { type: 'banList', bannedUsers: [...this.bannedUsers], bannedIPs: [...this.bannedIPs], restricted });
+    send(ws, { type: 'barList', names: [...this.barredNames], ips: [...this.barredIPs], restricted });
   }
 
-  onAdminBroadcast(ws, data) {
+  onCtlAnnounce(ws, data) {
     const message = typeof data.message === 'string' ? data.message.trim().slice(0, 500) : '';
     if (!message) return;
-    this.broadcast({ type: 'broadcast', message });
-    this.ok(ws, 'Broadcast sent');
+    this.broadcast({ type: 'announce', message });
+    this.ok(ws, 'Announcement sent');
   }
 
-  onAdminSlowMode(ws, data) {
-    this.slowMode = { enabled: !!data.enabled, duration: clamp(data.duration, 1, 3600, 5) };
+  onCtlPace(ws, data) {
+    this.pace = { enabled: !!data.enabled, duration: clamp(data.duration, 1, 3600, 5) };
     this.saveMeta();
-    this.ok(ws, this.slowMode.enabled ? `Slow mode on (${this.slowMode.duration}s)` : 'Slow mode off');
+    this.ok(ws, this.pace.enabled ? `Pace limit on (${this.pace.duration}s)` : 'Pace limit off');
   }
 
-  onAdminClearChat(ws, data) {
-    if (!CHANNELS.includes(data.channel)) return;
-    const keys = this.channels[data.channel].map(chKey);
-    this.channels[data.channel] = [];
+  onCtlClear(ws, data) {
+    if (!BOARDS.includes(data.board)) return;
+    const keys = this.boards[data.board].map(bKey);
+    this.boards[data.board] = [];
     if (keys.length) bg(this.ctx.storage.delete(keys));
-    this.broadcast({ type: 'chatCleared', channel: data.channel });
-    this.ok(ws, `Cleared #${data.channel}`);
+    this.broadcast({ type: 'cleared', board: data.board });
+    this.ok(ws, `Cleared #${data.board}`);
   }
 
-  onAdminEffect(ws, data, admin) {
+  onCtlFx(ws, data, admin) {
     if (!EFFECTS.has(data.effect)) return;
-    const t = this.modTarget(ws, admin, data.targetUsername);
+    const t = this.modTarget(ws, admin, data.target);
     if (!t) return;
     send(t.ws, { type: data.effect });
-    this.ok(ws, `Sent ${data.effect} to ${t.user.username}`);
+    this.ok(ws, `Sent ${data.effect} to ${t.user.name}`);
   }
 
-  onAdminConfettiAll(ws) {
+  onCtlFxAll(ws) {
     this.broadcast({ type: 'confetti' });
-    this.ok(ws, 'Confetti sent to everyone');
+    this.ok(ws, 'Sent to everyone');
   }
 
-  onAdminForceDisconnect(ws, data, admin) {
-    const t = this.modTarget(ws, admin, data.targetUsername);
+  onCtlCut(ws, data, admin) {
+    const t = this.modTarget(ws, admin, data.target);
     if (!t) return;
     send(t.ws, { type: 'forceDisconnect' });
-    try { t.ws.close(4004, 'disconnected by admin'); } catch { /* ignore */ }
-    this.ok(ws, `Disconnected ${t.user.username}`);
+    try { t.ws.close(4004, 'cut'); } catch { /* ignore */ }
+    this.ok(ws, `Disconnected ${t.user.name}`);
   }
 }
 
-// ---------- GIF search (the GIPHY key stays on the server) ----------
+// ---------- animation search (the API key stays on the server) ----------
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -1089,8 +1052,8 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   }
 });
 
-async function searchGifs(url, env) {
-  if (!env.GIPHY_API_KEY) return json({ error: 'GIF search is not set up yet' }, 503);
+async function searchAnims(url, env) {
+  if (!env.GIPHY_API_KEY) return json({ error: 'Not set up yet' }, 503);
   const q = (url.searchParams.get('q') || '').trim().slice(0, 50);
   const api = new URL('https://api.giphy.com/v1/gifs/' + (q ? 'search' : 'trending'));
   api.searchParams.set('api_key', env.GIPHY_API_KEY);
@@ -1099,7 +1062,7 @@ async function searchGifs(url, env) {
   if (q) api.searchParams.set('q', q);
   try {
     const r = await fetch(api);
-    if (!r.ok) return json({ error: 'GIF service unavailable' }, 502);
+    if (!r.ok) return json({ error: 'Service unavailable' }, 502);
     const body = await r.json();
     const results = (body.data || []).map((g) => ({
       id: g.id,
@@ -1109,7 +1072,7 @@ async function searchGifs(url, env) {
     })).filter((g) => g.preview && g.url);
     return json({ results });
   } catch {
-    return json({ error: 'GIF service unavailable' }, 502);
+    return json({ error: 'Service unavailable' }, 502);
   }
 }
 
@@ -1120,14 +1083,12 @@ export default {
     const url = new URL(request.url);
     const wantsSocket = request.headers.get('Upgrade') === 'websocket';
 
-    if (url.pathname === '/api/gifs') return searchGifs(url, env);
+    if (url.pathname === '/api/m') return searchAnims(url, env);
 
-    // The page connects to /ws. (A plain "/" request is served by static assets, so it
-    // can never be used for the upgrade.)
-    if (wantsSocket || url.pathname === '/ws') {
-      if (!wantsSocket) return new Response('Expected WebSocket request', { status: 426 });
-      const room = env.CHAT_ROOM.get(env.CHAT_ROOM.idFromName('global'));
-      return room.fetch(request);
+    if (wantsSocket || url.pathname === '/s') {
+      if (!wantsSocket) return new Response('Not found', { status: 426 });
+      const hub = env.HUB.get(env.HUB.idFromName('global'));
+      return hub.fetch(request);
     }
 
     return env.ASSETS.fetch(request);
