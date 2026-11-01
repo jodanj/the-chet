@@ -1,7 +1,7 @@
 {
   "name": "the-chet",
   "version": "1.0.0",
-  "description": "idk like a cool website",
+  "description": "dashboard",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
