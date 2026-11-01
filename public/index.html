@@ -346,7 +346,14 @@ body.light-theme .mob-btn{color:#4f5660}
 @media (max-width:768px){
   body,.shell{height:100vh;height:100dvh}
   .side{position:fixed;top:0;bottom:0;left:0;width:82vw;max-width:300px;z-index:1200;transform:translateX(-100%);transition:transform .25s}
-  .side.right{left:auto;right:0;border-left:1px solid #202225;transform:translateX(100%);margin-right:0!important}
+  .side.right{position:fixed;order:0;left:auto;right:0;border-left:1px solid #202225;transform:translateX(100%);margin-right:0!important}
+  .main{width:100%;flex:1 1 100%}
+  .top{min-width:0}
+  .compose{min-width:0}
+  .fld{min-width:0;width:100%}
+  .box{gap:4px}
+  .ibtn{padding:4px 6px;font-size:18px;flex-shrink:0}
+  .go{padding:8px 12px;flex-shrink:0}
   .side.drawer-open,.side.right.drawer-open{transform:none}
   .right-toggle{display:none}
   .drawer-backdrop.show{display:block}
