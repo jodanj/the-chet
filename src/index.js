@@ -1,11 +1,19 @@
 /**
  * Hub - Cloudflare Worker + Durable Object realtime server.
  *
- * Secrets (set with `npx wrangler secret put NAME`, or in .dev.vars for local dev):
- *   OWNER_PASSWORD, ADMIN_PASSWORD, VIP_PASSWORD, GIPHY_API_KEY
- * A role is granted when the access key typed into the form matches one of them.
+ * Accounts live in a D1 (SQLite) database bound as DB (see wrangler.jsonc). The tables are
+ * created automatically on first use. Guests can join without an account, but cannot use a
+ * username that belongs to an account.
  *
- * Spaces: any board named "space:<code>" is private. Only sockets that
+ * Secrets (set with `npx wrangler secret put NAME`, or in .dev.vars for local dev):
+ *   OWNER_PASSWORD  - typing it in the "Admin login" box while logged in to an account makes
+ *                     that account an owner (saved in the database).
+ *   ADMIN_PASSWORD, VIP_PASSWORD - optional extra passwords that grant a role for one session.
+ * Owners can give other accounts VIP or Mod (admin) from the Owner tab of the admin panel.
+ *
+ * Messages are deleted automatically after 3 days.
+ *
+ * Rooms: any channel named "space:<code>" is private. Only sockets that
  * have entered that code can read it, post in it, or receive its events.
  */
 
@@ -20,10 +28,17 @@ const EFFECTS = new Set([
 const MAX_BOARD_LOG = 100;
 const MAX_LINK_LOG = 200;
 const MAX_TEXT = 2000;
-const MAX_MEDIA_CHARS = 700000;
-const MAX_FRAME_CHARS = 1000000;
+const MAX_MEDIA_CHARS = 1000000;   // the page shrinks big pictures to fit this
+const MAX_FRAME_CHARS = 1040000;   // WebSocket frames stay just under 1 MiB
 
-const ANIM_URL_RE = /^https:\/\/(?:media\d*|i)\.giphy\.com\/[\w\-./%]+(?:\?[\w\-=&%.]*)?$/;
+const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;   // messages are deleted after 3 days
+const PURGE_EVERY_MS = 60 * 60 * 1000;        // ...checked once an hour
+
+const PBKDF2_ITERS = 100000;                  // the most Workers allows
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const ACCOUNT_NAME_RE = /^[A-Za-z0-9_.-]{3,20}$/;
+const GUEST_NAME_RE = /^guest\d*$/i;           // reserved for guests
+const DUMMY_SALT = '00000000000000000000000000000000';
 
 const BURST_COUNT = 9, BURST_WINDOW_MS = 3000;
 const AUTO_PACE_MS = 5 * 60 * 1000, AUTO_PACE_GAP_MS = 3000;
@@ -82,6 +97,24 @@ function safeEqual(input, secret) {
   return diff === 0;
 }
 
+const toHex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+const fromHex = (hex) => Uint8Array.from(hex.match(/../g).map((h) => parseInt(h, 16)));
+const randomHex = (n) => toHex(crypto.getRandomValues(new Uint8Array(n)));
+async function sha256Hex(text) {
+  return toHex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))));
+}
+async function hashPassword(password, saltHex) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: fromHex(saltHex), iterations: PBKDF2_ITERS }, key, 256);
+  return toHex(new Uint8Array(bits));
+}
+// Always does the same work, even for names that don't exist.
+async function verifyPassword(password, account) {
+  const h = await hashPassword(password, account ? account.salt : DUMMY_SALT);
+  return !!account && safeEqual(h, account.hash);
+}
+
 const roleOf = (u) => (u.isOwner ? 'owner' : u.isAdmin ? 'admin' : u.isVIP ? 'vip' : null);
 const isStaff = (u) => !!(u && (u.isAdmin || u.isOwner));
 
@@ -110,7 +143,16 @@ export class Hub {
     this.autoPaceUntil = new Map();
     this.lastTs = 0;
 
-    ctx.blockConcurrencyWhile(() => this.load());
+    this.opening = new WeakSet();     // sockets in the middle of signing in
+    this.authFails = new Map();       // ip -> { n, t }
+    this.signups = new Map();         // ip -> [timestamps]
+    this.schemaReady = null;
+
+    ctx.blockConcurrencyWhile(async () => {
+      await this.load();
+      await this.purgeOld();
+      if (!(await ctx.storage.getAlarm())) await ctx.storage.setAlarm(Date.now() + PURGE_EVERY_MS);
+    });
   }
 
   // ----- persistence -----
@@ -156,6 +198,28 @@ export class Hub {
   nextTimestamp() {
     this.lastTs = Math.max(Date.now(), this.lastTs + 1);
     return this.lastTs;
+  }
+
+  // ----- 3-day cleanup -----
+
+  async purgeOld() {
+    const cutoff = Date.now() - MAX_AGE_MS;
+    for (const list of Object.values(this.boards)) while (list.length && list[0].ts < cutoff) list.shift();
+    for (const list of this.links.values()) while (list.length && list[0].ts < cutoff) list.shift();
+
+    const stale = [];
+    for (const prefix of ['b:', 't:']) {
+      for (const [key, m] of await this.ctx.storage.list({ prefix })) {
+        if (m && m.ts < cutoff) stale.push(key);
+      }
+    }
+    for (let i = 0; i < stale.length; i += 128) await this.ctx.storage.delete(stale.slice(i, i + 128));
+    this.pruneSpaces();
+  }
+
+  async alarm() {
+    try { await this.purgeOld(); } catch (err) { console.error('purge failed:', err); }
+    await this.ctx.storage.setAlarm(Date.now() + PURGE_EVERY_MS);
   }
 
   // ----- board / space helpers -----
@@ -211,7 +275,7 @@ export class Hub {
 
     if (this.barredIPs.has(ip)) {
       server.accept();
-      server.send(JSON.stringify({ type: 'barred', message: 'Access denied (IP)' }));
+      server.send(JSON.stringify({ type: 'barred', message: 'You are banned from this server (IP ban)' }));
       server.close(4003, 'barred');
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -227,7 +291,7 @@ export class Hub {
     try { data = JSON.parse(raw); } catch { return; }
     if (!data || typeof data !== 'object' || typeof data.type !== 'string') return;
     try {
-      this.dispatch(ws, data);
+      await this.dispatch(ws, data);
     } catch (err) {
       console.error('Error handling', data.type, err);
     }
@@ -316,11 +380,11 @@ export class Hub {
   modTarget(ws, admin, name) {
     const t = this.findMember(name);
     if (!t) {
-      send(ws, { type: 'fault', message: 'Member not online' });
+      send(ws, { type: 'fault', message: 'User not online' });
       return null;
     }
     if (!this.canModerate(admin, t.user)) {
-      send(ws, { type: 'fault', message: 'Not permitted' });
+      send(ws, { type: 'fault', message: 'Cannot moderate this user' });
       return null;
     }
     return t;
@@ -355,6 +419,7 @@ export class Hub {
 
       case 'avOn': return this.onAvOn(ws, data, user);
       case 'avOff': return this.avOff(ws, user);
+      case 'logout': return this.onLogout(user);
       case 'avOffer': return this.relayAv(user, data, 'avOffer', 'offer');
       case 'avAnswer': return this.relayAv(user, data, 'avAnswer', 'answer');
       case 'avCand': return this.relayAv(user, data, 'avCand', 'candidate');
@@ -375,6 +440,8 @@ export class Hub {
       case 'ctlFx': return this.onCtlFx(ws, data, user);
       case 'ctlFxAll': return this.onCtlFxAll(ws);
       case 'ctlCut': return this.onCtlCut(ws, data, user);
+      case 'ctlAccounts': return this.onCtlAccounts(ws, user);
+      case 'ctlSetRole': return this.onCtlSetRole(ws, data, user);
     }
   }
 
@@ -385,54 +452,201 @@ export class Hub {
     try { ws.close(code, type); } catch { /* ignore */ }
   }
 
-  onOpen(ws, data, att) {
-    if (att.name) return;
+  // ----- accounts (D1) -----
 
+  ensureSchema() {
+    if (!this.schemaReady) {
+      const db = this.env.DB;
+      this.schemaReady = db.batch([
+        db.prepare('CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, username TEXT NOT NULL, username_lc TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, hash TEXT NOT NULL, role TEXT, created INTEGER NOT NULL)'),
+        db.prepare('CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, account_id TEXT NOT NULL, created INTEGER NOT NULL)'),
+        db.prepare('CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id)')
+      ]).catch((err) => { this.schemaReady = null; throw err; });
+    }
+    return this.schemaReady;
+  }
+
+  accountByName(name) {
+    return this.env.DB.prepare('SELECT id, username, role, salt, hash FROM accounts WHERE username_lc = ?').bind(lc(name)).first();
+  }
+
+  accountByToken(tokenHash) {
+    return this.env.DB.prepare(
+      'SELECT a.id, a.username, a.role FROM sessions s JOIN accounts a ON a.id = s.account_id WHERE s.token_hash = ? AND s.created > ?'
+    ).bind(tokenHash, Date.now() - SESSION_TTL_MS).first();
+  }
+
+  async accountIdExists(id) {
+    return !!(await this.env.DB.prepare('SELECT 1 AS x FROM accounts WHERE id = ?').bind(id).first());
+  }
+
+  // Slows down password guessing and account spam from one address.
+  authBlocked(ip) {
+    const e = this.authFails.get(ip);
+    return !!e && e.n >= 8 && Date.now() - e.t < 10 * 60 * 1000;
+  }
+
+  authFail(ip) {
+    const now = Date.now();
+    let e = this.authFails.get(ip);
+    if (!e || now - e.t >= 10 * 60 * 1000) e = { n: 0, t: now };
+    e.n++;
+    this.authFails.set(ip, e);
+  }
+
+  signupBlocked(ip) {
+    const recent = (this.signups.get(ip) || []).filter((t) => Date.now() - t < 60 * 60 * 1000);
+    this.signups.set(ip, recent);
+    return recent.length >= 5;
+  }
+
+  // ----- open (sign in as guest, log in, sign up, or resume a saved session) -----
+
+  async onOpen(ws, data, att) {
+    if (att.name || this.opening.has(ws)) return;
+    this.opening.add(ws);
+    try {
+      await this.doOpen(ws, data, att);
+    } catch (err) {
+      console.error('open failed:', err);
+      this.reject(ws, 'denied', 'Something went wrong. Please try again.');
+    } finally {
+      this.opening.delete(ws);
+    }
+  }
+
+  async doOpen(ws, data, att) {
     const ip = att.ip || 'unknown';
-    const name = cleanName(data.name);
-    if (!name) return this.reject(ws, 'denied', 'Choose a name');
+    const db = this.env.DB;
+    const mode = ['guest', 'login', 'signup', 'resume'].includes(data.mode) ? data.mode : 'guest';
+    const password = typeof data.password === 'string' ? data.password : '';
+    let name = cleanName(data.name);
+    let account = null;   // { id, username, role, ... }
+    let tokenHash = null;
 
+    // 1. Who is this?
+    if (mode !== 'guest') {
+      if (!db) return this.reject(ws, 'denied', 'Accounts are not set up on this server yet');
+      if (this.authBlocked(ip)) return this.reject(ws, 'denied', 'Too many attempts. Try again in a few minutes.');
+      await this.ensureSchema();
+
+      if (mode === 'resume') {
+        const th = typeof data.token === 'string' && data.token ? await sha256Hex(data.token) : '';
+        account = th ? await this.accountByToken(th) : null;
+        if (!account) return this.reject(ws, 'denied', 'Session expired. Please log in again.');
+        tokenHash = th;
+      } else if (mode === 'login') {
+        const found = name ? await this.accountByName(name) : null;
+        if (!(await verifyPassword(password, found))) {
+          this.authFail(ip);
+          return this.reject(ws, 'denied', 'Wrong username or password');
+        }
+        account = found;
+      } else {
+        if (!ACCOUNT_NAME_RE.test(name) || GUEST_NAME_RE.test(name)) {
+          return this.reject(ws, 'denied', 'Usernames are 3-20 letters, numbers, _ . or - (and cannot look like "Guest1234")');
+        }
+        if (password.length < 6 || password.length > 128) {
+          return this.reject(ws, 'denied', 'Password must be 6-128 characters');
+        }
+        if (this.signupBlocked(ip)) return this.reject(ws, 'denied', 'Too many accounts created from this connection. Try again later.');
+        if (await this.accountByName(name)) return this.reject(ws, 'denied', 'That username is taken');
+      }
+      if (account) name = account.username;
+    }
+    if (!name) return this.reject(ws, 'denied', 'Choose a username');
+
+    // 2. Role: saved on the account, plus any password typed in the Admin login box.
     let isOwner = false;
     let isAdmin = false;
     let isVIP = false;
-    const password = typeof data.password === 'string' ? data.password : '';
-    if (password) {
-      if (safeEqual(password, this.env.OWNER_PASSWORD)) { isOwner = true; isAdmin = true; }
-      else if (safeEqual(password, this.env.ADMIN_PASSWORD)) isAdmin = true;
-      else if (safeEqual(password, this.env.VIP_PASSWORD)) isVIP = true;
-      else return this.reject(ws, 'denied', 'Incorrect key');
+    const saved = account ? account.role : null;
+    if (saved === 'owner') { isOwner = true; isAdmin = true; }
+    else if (saved === 'admin') isAdmin = true;
+    else if (saved === 'vip') isVIP = true;
+
+    const key = typeof data.key === 'string' ? data.key : '';
+    let promoteOwner = false;
+    if (key) {
+      if (safeEqual(key, this.env.OWNER_PASSWORD)) { isOwner = true; isAdmin = true; promoteOwner = saved !== 'owner'; }
+      else if (safeEqual(key, this.env.ADMIN_PASSWORD)) isAdmin = true;
+      else if (safeEqual(key, this.env.VIP_PASSWORD)) isVIP = true;
+      else return this.reject(ws, 'denied', 'Incorrect password');
     }
 
     if (!isAdmin && this.barredNames.has(lc(name))) {
-      return this.reject(ws, 'barred', 'Access denied', 4003);
+      return this.reject(ws, 'banned', 'You are banned from this server', 4003);
     }
 
-    const uuid = typeof data.uuid === 'string' && UUID_RE.test(data.uuid) ? data.uuid : crypto.randomUUID();
+    // 3. Guests may not take a name that belongs to an account.
+    let guestUuid = null;
+    if (mode === 'guest') {
+      if (db) {
+        await this.ensureSchema();
+        if (await this.accountByName(name)) {
+          return this.reject(ws, 'denied', 'That username belongs to an account. Log in, or choose another name.');
+        }
+      }
+      const wanted = typeof data.uuid === 'string' && UUID_RE.test(data.uuid) ? data.uuid : null;
+      guestUuid = wanted && !(db && await this.accountIdExists(wanted)) ? wanted : crypto.randomUUID();
+    }
+
+    // 4. Create / update the account and issue a session.
+    let token = null;
+    if (mode === 'signup') {
+      const salt = randomHex(16);
+      const hash = await hashPassword(password, salt);
+      const id = crypto.randomUUID();
+      try {
+        await db.prepare('INSERT INTO accounts (id, username, username_lc, salt, hash, role, created) VALUES (?, ?, ?, ?, ?, NULL, ?)')
+          .bind(id, name, lc(name), salt, hash, Date.now()).run();
+      } catch {
+        return this.reject(ws, 'denied', 'That username is taken');
+      }
+      account = { id, username: name, role: null };
+      this.signups.get(ip).push(Date.now());
+    }
+    if (promoteOwner && account) {
+      await db.prepare('UPDATE accounts SET role = ? WHERE id = ?').bind('owner', account.id).run();
+      account.role = 'owner';
+    }
+    if (mode === 'login' || mode === 'signup') {
+      token = randomHex(32);
+      tokenHash = await sha256Hex(token);
+      await db.prepare('INSERT INTO sessions (token_hash, account_id, created) VALUES (?, ?, ?)').bind(tokenHash, account.id, Date.now()).run();
+      await db.prepare('DELETE FROM sessions WHERE created < ?').bind(Date.now() - SESSION_TTL_MS).run();
+    }
+
+    // Accounts use their account id as the member id, so DMs follow them across devices.
+    const uuid = account ? account.id : guestUuid;
 
     let finalName = name;
     let staleAv = null;
     let staleSpaces = [];
     const clash = this.findMember(name);
     if (clash) {
-      if (clash.user.uuid === uuid) {
+      if (clash.user.uuid === uuid || account) {
+        // Same person reconnecting, or the account owner taking their name back from a guest.
         staleAv = clash.user.av;
         staleSpaces = clash.user.spaces || [];
         clash.ws.serializeAttachment({ ip: clash.user.ip });
-        try { clash.ws.close(4000, 'Replaced'); } catch { /* ignore */ }
+        if (clash.user.uuid !== uuid) send(clash.ws, { type: 'denied', message: 'That username was claimed by its account owner' });
+        try { clash.ws.close(clash.user.uuid === uuid ? 4000 : 4001, 'Replaced'); } catch { /* ignore */ }
       } else if (/^guest$/i.test(name)) {
         do {
           finalName = `Guest${1000 + Math.floor(Math.random() * 9000)}`;
         } while (this.findMember(finalName));
       } else {
-        return this.reject(ws, 'denied', 'That name is already in use');
+        return this.reject(ws, 'denied', 'That username is already in use');
       }
     }
 
     ws.serializeAttachment({
-      ip, uuid, name: finalName, isOwner, isAdmin, isVIP, av: null, pending: [], spaces: []
+      ip, uuid, name: finalName, isOwner, isAdmin, isVIP, av: null, pending: [], spaces: [],
+      acct: !!account, th: tokenHash || undefined
     });
 
-    send(ws, { type: 'ready', uuid, name: finalName, isOwner, isAdmin, isVIP });
+    send(ws, { type: 'ready', uuid, name: finalName, isOwner, isAdmin, isVIP, account: !!account, token: token || undefined });
     send(ws, { type: 'linkList', links: this.linkListFor(uuid) });
     send(ws, { type: 'hiddenList', members: [...(this.hidden.get(uuid)?.values() || [])] });
     for (const b of AV_BOARDS) {
@@ -444,6 +658,13 @@ export class Hub {
       this.broadcast({ type: 'avMembers', board: staleAv, members: this.avMembers(staleAv) });
     }
     for (const code of staleSpaces) this.broadcastSpaceMembers(code);
+  }
+
+  async onLogout(user) {
+    if (!user.th || !this.env.DB) return;
+    try {
+      await this.env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(user.th).run();
+    } catch (err) { console.error('logout failed:', err); }
   }
 
   linkListFor(uuid) {
@@ -461,7 +682,7 @@ export class Hub {
   onEnterSpace(ws, data, user) {
     const code = normSpace(data.code);
     if (code.length < 3) {
-      send(ws, { type: 'fault', message: 'Codes need 3-20 letters, numbers or dashes' });
+      send(ws, { type: 'fault', message: 'Room codes need 3-20 letters, numbers or dashes' });
       return;
     }
     const restore = !!data.restore;
@@ -472,7 +693,7 @@ export class Hub {
       return;
     }
     if (spaces.length >= MAX_SPACES_PER_USER) {
-      send(ws, { type: 'fault', message: `Limit of ${MAX_SPACES_PER_USER} spaces` });
+      send(ws, { type: 'fault', message: `You can be in at most ${MAX_SPACES_PER_USER} rooms` });
       return;
     }
 
@@ -480,7 +701,7 @@ export class Hub {
     if (!this.boards[board]) {
       if (this.spaceCount() >= MAX_SPACES_TOTAL) this.pruneSpaces();
       if (this.spaceCount() >= MAX_SPACES_TOTAL) {
-        send(ws, { type: 'fault', message: 'Too many spaces right now, try again later' });
+        send(ws, { type: 'fault', message: 'Too many rooms right now, try again later' });
         return;
       }
       this.boards[board] = [];
@@ -524,9 +745,8 @@ export class Hub {
     if (data.media != null) {
       const u = data.media;
       const okData = typeof u === 'string' && u.startsWith('data:image/') && u.length <= MAX_MEDIA_CHARS;
-      const okAnim = typeof u === 'string' && u.length <= 500 && ANIM_URL_RE.test(u);
-      if (!okData && !okAnim) {
-        send(ws, { type: 'fault', message: 'Attachment is invalid or too large' });
+      if (!okData) {
+        send(ws, { type: 'fault', message: 'Image is invalid or too large' });
         return null;
       }
       media = u;
@@ -538,7 +758,7 @@ export class Hub {
   checkPaused(ws, user) {
     const until = this.pausedUntil.get(lc(user.name));
     if (until && until > Date.now()) {
-      send(ws, { type: 'fault', message: `Paused for another ${Math.ceil((until - Date.now()) / 1000)}s` });
+      send(ws, { type: 'fault', message: `You are muted for another ${Math.ceil((until - Date.now()) / 1000)}s` });
       return false;
     }
     return true;
@@ -553,7 +773,7 @@ export class Hub {
   checkLimited(ws, user, isLink) {
     const r = this.limitOf(user);
     if (r === 'mute' || (r === 'dm' && !isLink)) {
-      send(ws, { type: 'fault', message: r === 'mute' ? 'Posting is disabled for you' : 'Only private threads are allowed for you' });
+      send(ws, { type: 'fault', message: r === 'mute' ? 'You are muted and cannot send messages' : 'You can only send direct messages' });
       return false;
     }
     return true;
@@ -567,14 +787,14 @@ export class Hub {
     const until = this.autoPaceUntil.get(key) || 0;
     if (until > now && recent.length && now - recent[recent.length - 1] < AUTO_PACE_GAP_MS) {
       const wait = Math.ceil((AUTO_PACE_GAP_MS - (now - recent[recent.length - 1])) / 1000);
-      send(ws, { type: 'fault', message: `Pace limit: wait ${wait}s` });
+      send(ws, { type: 'fault', message: `Slow mode: wait ${wait}s between messages` });
       return false;
     }
     recent.push(now);
     this.recentPosts.set(key, recent);
     if (recent.length >= BURST_COUNT && until <= now) {
       this.autoPaceUntil.set(key, now + AUTO_PACE_MS);
-      send(ws, { type: 'fault', message: 'Too fast. Pace limit is on for 5 minutes.' });
+      send(ws, { type: 'fault', message: 'You were sending messages too fast. Slow mode is on for 5 minutes.' });
     }
     return true;
   }
@@ -590,7 +810,7 @@ export class Hub {
     if (this.pace.enabled && !isStaff(user)) {
       const last = this.lastPostAt.get(key);
       if (last && Date.now() - last < this.pace.duration * 1000) {
-        send(ws, { type: 'fault', message: `Pace limit: wait ${this.pace.duration}s` });
+        send(ws, { type: 'fault', message: `Slow mode: wait ${this.pace.duration}s between messages` });
         return;
       }
     }
@@ -621,11 +841,11 @@ export class Hub {
     const other = this.linkMembers.get(data.thread).find((p) => p.uuid !== user.uuid);
     if (other) {
       if (this.isHiddenBy(other.uuid, user.uuid)) {
-        send(ws, { type: 'fault', message: 'Not available' });
+        send(ws, { type: 'fault', message: "You can't send messages to this user" });
         return;
       }
       if (this.isHiddenBy(user.uuid, other.uuid)) {
-        send(ws, { type: 'fault', message: 'You hid this member. Unhide them first.' });
+        send(ws, { type: 'fault', message: 'You blocked this user. Unblock them to send messages.' });
         return;
       }
     }
@@ -744,12 +964,12 @@ export class Hub {
   onHide(ws, data, user) {
     const t = this.findMember(data.target);
     if (!t || t.user.uuid === user.uuid) {
-      send(ws, { type: 'fault', message: 'Member not online' });
+      send(ws, { type: 'fault', message: 'User not online' });
       return;
     }
     const mine = this.hidden.get(user.uuid) || new Map();
     if (mine.size >= MAX_HIDDEN && !mine.has(t.user.uuid)) {
-      send(ws, { type: 'fault', message: 'Your hidden list is full' });
+      send(ws, { type: 'fault', message: 'Your block list is full' });
       return;
     }
     mine.set(t.user.uuid, t.user.name);
@@ -773,15 +993,15 @@ export class Hub {
   onLinkReq(ws, data, user) {
     const target = this.findMember(data.target);
     if (!target || target.user.uuid === user.uuid) {
-      send(ws, { type: 'fault', message: 'Member not online' });
+      send(ws, { type: 'fault', message: 'User not online' });
       return;
     }
     if (this.isHiddenBy(target.user.uuid, user.uuid)) {
-      send(ws, { type: 'fault', message: 'Not available' });
+      send(ws, { type: 'fault', message: "You can't message this user" });
       return;
     }
     if (this.isHiddenBy(user.uuid, target.user.uuid)) {
-      send(ws, { type: 'fault', message: 'You hid this member. Unhide them first.' });
+      send(ws, { type: 'fault', message: 'You blocked this user. Unblock them first.' });
       return;
     }
 
@@ -874,11 +1094,11 @@ export class Hub {
     const reason = cleanReason(data.reason);
     send(t.ws, {
       type: 'ejected',
-      message: `Session ended${reason ? ': ' + reason : ''}`,
+      message: `You have been kicked${reason ? ': ' + reason : ''}`,
       redirectUrl: 'https://google.com'
     });
     try { t.ws.close(4002, 'ejected'); } catch { /* ignore */ }
-    this.ok(ws, `Ejected ${t.user.name}`);
+    this.ok(ws, `Kicked ${t.user.name}`);
   }
 
   onCtlPause(ws, data, admin, eventType) {
@@ -887,7 +1107,7 @@ export class Hub {
     const duration = clamp(data.duration, 1, 86400, 60);
     const reason = cleanReason(data.reason);
     this.pausedUntil.set(lc(t.user.name), Date.now() + duration * 1000);
-    const verb = eventType === 'paused' ? 'paused' : 'silenced';
+    const verb = eventType === 'paused' ? 'timed out' : 'muted';
     send(t.ws, {
       type: eventType,
       duration,
@@ -906,11 +1126,11 @@ export class Hub {
 
     const t = this.findMember(name);
     if (t && !this.canModerate(admin, t.user)) {
-      send(ws, { type: 'fault', message: 'Not permitted' });
+      send(ws, { type: 'fault', message: 'Cannot moderate this user' });
       return;
     }
     if (!t && !barName) {
-      send(ws, { type: 'fault', message: 'Member is not online (an IP rule needs an online member)' });
+      send(ws, { type: 'fault', message: 'User is not online (an IP ban needs an online user)' });
       return;
     }
 
@@ -922,10 +1142,10 @@ export class Hub {
       if (barIp && ip) this.barredIPs.add(ip);
       this.saveMeta();
       if (t) {
-        send(t.ws, { type: 'barred', message: `Access removed${reason ? ': ' + reason : ''}` });
+        send(t.ws, { type: 'barred', message: `You have been banned${reason ? ': ' + reason : ''}` });
         try { t.ws.close(4003, 'barred'); } catch { /* ignore */ }
       }
-      this.ok(ws, `Barred ${name}`);
+      this.ok(ws, `Banned ${name}`);
       return;
     }
 
@@ -936,24 +1156,24 @@ export class Hub {
       send(t.ws, {
         type: 'limited',
         message: (mode === 'mute'
-          ? 'Posting is now disabled for you'
-          : 'You can no longer post on boards or in spaces, private threads still work') + (reason ? ': ' + reason : '')
+          ? 'You have been muted and can no longer send messages'
+          : 'You can no longer chat in channels or rooms, but you can still send DMs') + (reason ? ': ' + reason : '')
       });
     }
-    this.ok(ws, `${mode === 'mute' ? 'Silenced' : 'Board-limited'} ${name} (until lifted in the list tab)`);
+    this.ok(ws, `${mode === 'mute' ? 'Muted' : 'Chat-blocked'} ${name} (until removed in the Bans tab)`);
   }
 
   onCtlUnbar(ws, data) {
     this.barredNames.delete(lc(data.name ?? ''));
     this.saveMeta();
-    this.ok(ws, `Restored ${data.name}`);
+    this.ok(ws, `Unbanned ${data.name}`);
     this.onCtlList(ws);
   }
 
   onCtlUnbarIp(ws, data) {
     this.barredIPs.delete(data.ip);
     this.saveMeta();
-    this.ok(ws, `Restored IP ${data.ip}`);
+    this.ok(ws, `Unbanned IP ${data.ip}`);
     this.onCtlList(ws);
   }
 
@@ -962,7 +1182,7 @@ export class Hub {
     else if (data.kind === 'user') this.limitedNames.delete(lc(data.value ?? ''));
     else return;
     this.saveMeta();
-    this.ok(ws, `Lifted limit on ${data.value}`);
+    this.ok(ws, `Removed restriction on ${data.value}`);
     this.onCtlList(ws);
   }
 
@@ -973,8 +1193,8 @@ export class Hub {
     const count = (this.notices.get(key) || 0) + 1;
     this.notices.set(key, count);
     this.saveMeta();
-    send(t.ws, { type: 'notice', message: cleanReason(data.reason) || 'Notice issued', count });
-    this.ok(ws, `Notice #${count} sent to ${t.user.name}`);
+    send(t.ws, { type: 'notice', message: cleanReason(data.reason) || 'You have been warned', count });
+    this.ok(ws, `Warned ${t.user.name} (warning #${count})`);
   }
 
   onCtlDrop(ws, data, user) {
@@ -986,7 +1206,7 @@ export class Hub {
     const [removed] = list.splice(i, 1);
     bg(this.ctx.storage.delete(bKey(removed)));
     this.broadcastBoard(data.board, { type: 'dropped', id: removed.id, board: data.board });
-    this.ok(ws, 'Entry removed');
+    this.ok(ws, 'Message deleted');
   }
 
   onCtlList(ws) {
@@ -1001,13 +1221,13 @@ export class Hub {
     const message = typeof data.message === 'string' ? data.message.trim().slice(0, 500) : '';
     if (!message) return;
     this.broadcast({ type: 'announce', message });
-    this.ok(ws, 'Announcement sent');
+    this.ok(ws, 'Broadcast sent');
   }
 
   onCtlPace(ws, data) {
     this.pace = { enabled: !!data.enabled, duration: clamp(data.duration, 1, 3600, 5) };
     this.saveMeta();
-    this.ok(ws, this.pace.enabled ? `Pace limit on (${this.pace.duration}s)` : 'Pace limit off');
+    this.ok(ws, this.pace.enabled ? `Slow mode on (${this.pace.duration}s)` : 'Slow mode off');
   }
 
   onCtlClear(ws, data) {
@@ -1029,7 +1249,7 @@ export class Hub {
 
   onCtlFxAll(ws) {
     this.broadcast({ type: 'confetti' });
-    this.ok(ws, 'Sent to everyone');
+    this.ok(ws, 'Confetti sent to everyone');
   }
 
   onCtlCut(ws, data, admin) {
@@ -1039,40 +1259,38 @@ export class Hub {
     try { t.ws.close(4004, 'cut'); } catch { /* ignore */ }
     this.ok(ws, `Disconnected ${t.user.name}`);
   }
-}
 
-// ---------- animation search (the API key stays on the server) ----------
+  // ----- owner: manage accounts -----
 
-const json = (body, status = 200) => new Response(JSON.stringify(body), {
-  status,
-  headers: {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Cache-Control': 'public, max-age=300'
+  async onCtlAccounts(ws, user) {
+    if (!user.isOwner) return;
+    if (!this.env.DB) { send(ws, { type: 'fault', message: 'Accounts are not set up on this server yet' }); return; }
+    await this.ensureSchema();
+    const { results } = await this.env.DB.prepare('SELECT username, role FROM accounts ORDER BY username_lc LIMIT 1000').all();
+    send(ws, { type: 'acctList', accounts: results || [] });
   }
-});
 
-async function searchAnims(url, env) {
-  if (!env.GIPHY_API_KEY) return json({ error: 'Not set up yet' }, 503);
-  const q = (url.searchParams.get('q') || '').trim().slice(0, 50);
-  const api = new URL('https://api.giphy.com/v1/gifs/' + (q ? 'search' : 'trending'));
-  api.searchParams.set('api_key', env.GIPHY_API_KEY);
-  api.searchParams.set('limit', '24');
-  api.searchParams.set('rating', 'pg-13');
-  if (q) api.searchParams.set('q', q);
-  try {
-    const r = await fetch(api);
-    if (!r.ok) return json({ error: 'Service unavailable' }, 502);
-    const body = await r.json();
-    const results = (body.data || []).map((g) => ({
-      id: g.id,
-      title: g.title || '',
-      preview: g.images?.fixed_width_small?.url || g.images?.fixed_width?.url,
-      url: g.images?.fixed_height?.url || g.images?.original?.url
-    })).filter((g) => g.preview && g.url);
-    return json({ results });
-  } catch {
-    return json({ error: 'Service unavailable' }, 502);
+  async onCtlSetRole(ws, data, user) {
+    if (!user.isOwner || !this.env.DB) return;
+    const role = ['admin', 'vip', 'none'].includes(data.role) ? data.role : null;
+    if (!role) return;
+    await this.ensureSchema();
+    const acct = await this.accountByName(cleanName(data.target));
+    if (!acct) { send(ws, { type: 'fault', message: 'No such account' }); return; }
+    if (acct.role === 'owner') { send(ws, { type: 'fault', message: 'Owner accounts cannot be changed here' }); return; }
+
+    await this.env.DB.prepare('UPDATE accounts SET role = ? WHERE id = ?').bind(role === 'none' ? null : role, acct.id).run();
+
+    const label = role === 'admin' ? 'a Mod (admin)' : role === 'vip' ? 'a VIP' : 'a regular member';
+    const t = this.findMember(acct.username);
+    if (t && t.user.acct) {
+      const u = { ...t.user, isOwner: false, isAdmin: role === 'admin', isVIP: role === 'vip' };
+      t.ws.serializeAttachment(u);
+      send(t.ws, { type: 'role', isOwner: false, isAdmin: u.isAdmin, isVIP: u.isVIP, message: `You are now ${label}` });
+      this.broadcast({ type: 'roster', members: this.getRoster() });
+    }
+    this.ok(ws, `${acct.username} is now ${label}`);
+    await this.onCtlAccounts(ws, user);
   }
 }
 
@@ -1082,8 +1300,6 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const wantsSocket = request.headers.get('Upgrade') === 'websocket';
-
-    if (url.pathname === '/api/m') return searchAnims(url, env);
 
     if (wantsSocket || url.pathname === '/s') {
       if (!wantsSocket) return new Response('Not found', { status: 426 });
