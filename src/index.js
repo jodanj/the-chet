@@ -5,11 +5,11 @@
  * created automatically on first use. Guests can join without an account, but cannot use a
  * username that belongs to an account.
  *
- * Secrets (set with `npx wrangler secret put NAME`, or in .dev.vars for local dev):
- *   OWNER_PASSWORD  - typing it in the "Admin login" box while logged in to an account makes
- *                     that account an owner (saved in the database).
- *   ADMIN_PASSWORD, VIP_PASSWORD - optional extra passwords that grant a role for one session.
- * Owners can give other accounts VIP or Mod (admin) from the Owner tab of the admin panel.
+ * Roles are stored on the account (accounts.role = 'owner', 'admin' or 'vip'). To make yourself
+ * an owner, change your row in the database, for example:
+ *   npx wrangler d1 execute <database-name> --remote --command \
+ *     "UPDATE accounts SET role = 'owner' WHERE username_lc = 'yourname'"
+ * Owners can then give other accounts VIP or Mod (admin) from the Owner tab of the admin panel.
  *
  * Messages are deleted automatically after 3 days.
  *
@@ -556,7 +556,7 @@ export class Hub {
     }
     if (!name) return this.reject(ws, 'denied', 'Choose a username');
 
-    // 2. Role: saved on the account, plus any password typed in the Admin login box.
+    // 2. Role: comes only from the account (guests have none).
     let isOwner = false;
     let isAdmin = false;
     let isVIP = false;
@@ -564,15 +564,6 @@ export class Hub {
     if (saved === 'owner') { isOwner = true; isAdmin = true; }
     else if (saved === 'admin') isAdmin = true;
     else if (saved === 'vip') isVIP = true;
-
-    const key = typeof data.key === 'string' ? data.key : '';
-    let promoteOwner = false;
-    if (key) {
-      if (safeEqual(key, this.env.OWNER_PASSWORD)) { isOwner = true; isAdmin = true; promoteOwner = saved !== 'owner'; }
-      else if (safeEqual(key, this.env.ADMIN_PASSWORD)) isAdmin = true;
-      else if (safeEqual(key, this.env.VIP_PASSWORD)) isVIP = true;
-      else return this.reject(ws, 'denied', 'Incorrect password');
-    }
 
     if (!isAdmin && this.barredNames.has(lc(name))) {
       return this.reject(ws, 'banned', 'You are banned from this server', 4003);
@@ -605,10 +596,6 @@ export class Hub {
       }
       account = { id, username: name, role: null };
       this.signups.get(ip).push(Date.now());
-    }
-    if (promoteOwner && account) {
-      await db.prepare('UPDATE accounts SET role = ? WHERE id = ?').bind('owner', account.id).run();
-      account.role = 'owner';
     }
     if (mode === 'login' || mode === 'signup') {
       token = randomHex(32);
