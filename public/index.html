@@ -13,12 +13,10 @@ body.light-theme{background:#fff}
 body.light-theme .side,body.light-theme .side.right,body.light-theme .main{background:#fff}
 body.light-theme .hd,body.light-theme .me-area{background:#f2f3f5;border-bottom-color:#e3e5e8}
 body.light-theme .item,body.light-theme .mem,body.light-theme .av-item{color:#4f5660}
-body.light-theme .item:hover,body.light-theme .mem:hover,body.light-theme .av-item:hover{background:#e3e5e8;color:#060607}
 body.light-theme .item.active,body.light-theme .av-item.active{background:#5865f2;color:#fff}
 body.light-theme .grp-hd{color:#4f5660}
 body.light-theme .top{background:#fff;border-bottom-color:#e3e5e8;color:#060607}
 body.light-theme .feed{background:#fff}
-body.light-theme .row:hover{background:rgba(0,0,0,.05)}
 body.light-theme .r-by.normal{color:#060607}
 body.light-theme .r-txt{color:#2e3338}
 body.light-theme .r-t{color:#5c5e66}
@@ -41,13 +39,11 @@ body.light-theme .sp-in{background:#ebedef;color:#2e3338}
 .side.right{order:3;border-left:1px solid #202225;position:relative;transition:margin-right .3s}
 .side.right.collapsed{margin-right:-240px}
 .right-toggle{position:absolute;left:-36px;top:50%;transform:translateY(-50%);background:#2f3136;border:1px solid #202225;border-right:none;padding:8px;border-radius:4px 0 0 4px;cursor:pointer;color:#96989d;transition:all .2s;user-select:none}
-.right-toggle:hover{color:#fff}
 .hd{height:48px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #202225;color:#fff;font-weight:600;font-size:15px}
 .lists{flex:1;overflow-y:auto;padding:8px}
 .grp{margin-bottom:16px}
 .grp-hd{color:#96989d;font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:4px;padding:0 8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
 .item{padding:8px 12px;margin:2px 0;border-radius:4px;color:#96989d;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:14px;transition:all .15s;position:relative}
-.item:hover{background:#3a3c42;color:#dcddde}
 .item.active{background:#404249;color:#fff}
 .item.has-unread{font-weight:600}
 .item-name{display:flex;align-items:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -59,31 +55,24 @@ body.light-theme .sp-in{background:#ebedef;color:#2e3338}
 .item.has-unread .cnt{display:block}
 .cnt2{position:absolute;right:28px;top:50%;transform:translateY(-50%);background:#ed4245;color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;font-weight:700;min-width:18px;text-align:center;display:block}
 .xbtn{opacity:0;background:none;border:none;color:#96989d;cursor:pointer;font-size:16px;transition:opacity .2s}
-.item:hover .xbtn{opacity:1}
-.xbtn:hover{color:#ed4245}
 .sp-form{display:flex;gap:4px;padding:0 4px;margin:6px 0}
 .sp-in{flex:1;min-width:0;padding:7px 8px;border-radius:4px;border:none;background:#202225;color:#dcddde;font-size:12px}
 .sp-in:focus{outline:none;box-shadow:0 0 0 2px #5865f2}
 .sp-in::placeholder{color:#72767d}
 .sp-btn{border:none;border-radius:4px;background:#5865f2;color:#fff;font-size:12px;font-weight:600;padding:0 10px;cursor:pointer;transition:background .2s;white-space:nowrap}
-.sp-btn:hover{background:#4752c4}
 .sp-btn.alt{background:#4f545c}
-.sp-btn.alt:hover{background:#5d6269}
 .hd-acts{display:flex;align-items:center;gap:10px}
 .hd-acts .sp-btn{padding:6px 10px}
 .sp-count{font-size:12px;color:#96989d}
 .av-sec{margin-top:16px;padding-top:16px;border-top:1px solid #202225}
 .av-item{padding:8px 12px;margin:2px 0;border-radius:4px;color:#96989d;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:14px;transition:all .15s}
-.av-item:hover{background:#3a3c42;color:#dcddde}
 .av-item.active{background:#404249;color:#fff}
 .av-name{display:flex;align-items:center}
 .av-stat{font-size:11px;color:#3ba55d}
 .av-ctl{display:none;gap:4px;margin-top:8px;padding:0 12px}
 .av-btn{flex:1;padding:6px;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;color:#fff}
 .av-btn.leave{background:#ed4245}
-.av-btn.leave:hover{background:#c93b3e}
 .av-btn.mute{background:#5865f2}
-.av-btn.mute:hover{background:#4752c4}
 .av-btn.mute.active{background:#faa61a}
 .av-parts{margin-top:8px;display:none}
 .av-parts.show{display:block}
@@ -93,13 +82,10 @@ body.light-theme .sp-in{background:#ebedef;color:#2e3338}
 .mem-sec{flex:1;overflow-y:auto;padding:8px}
 .on-count{color:#3ba55d;font-size:11px}
 .mem{padding:6px 12px;color:#dcddde;font-size:13px;display:flex;align-items:center;justify-content:space-between;border-radius:4px;margin:0 4px;transition:background .15s;cursor:default}
-.mem:hover{background:#3a3c42}
 .mem-name{display:flex;align-items:center;gap:6px}
 .mem-name::before{content:'●';color:#3ba55d;font-size:8px}
 .mem-btn{opacity:0;background:#5865f2;color:#fff;border:none;padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer;transition:opacity .2s}
-.mem:hover .mem-btn{opacity:1}
 .me-area{height:52px;background:#292b2f;padding:0 8px;display:flex;align-items:center;transition:background .2s;position:relative;gap:8px}
-.me-area:hover{background:#2a2d31}
 .ico{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;margin-right:8px;position:relative;flex-shrink:0}
 .dot{position:absolute;top:-2px;right:-2px;width:12px;height:12px;background:#ed4245;border:2px solid #292b2f;border-radius:50%;animation:pulse 2s infinite;display:none}
 .dot.show{display:block}
@@ -109,13 +95,11 @@ body.light-theme .me-name{color:#060607}
 .conn{width:8px;height:8px;border-radius:50%;background:#ed4245;transition:background .3s;flex-shrink:0}
 .conn.online{background:#3ba55d}
 .settings-btn{background:none;border:none;color:#96989d;cursor:pointer;font-size:20px;padding:4px;border-radius:4px;transition:all .2s;display:flex;align-items:center;justify-content:center}
-.settings-btn:hover{background:#3a3c42;color:#fff}
 #settingsPanel{position:fixed;bottom:60px;left:8px;width:400px;max-width:calc(100vw - 16px);max-height:500px;background:#2f3136;border:1px solid #202225;border-radius:8px;display:none;flex-direction:column;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 #settingsPanel.show{display:flex}
 .settings-header{padding:12px 16px;border-bottom:1px solid #202225;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 .settings-title{color:#fff;font-weight:600;font-size:14px}
 .settings-close{background:none;border:none;color:#96989d;cursor:pointer;font-size:20px;transition:color .2s}
-.settings-close:hover{color:#fff}
 .settings-content{flex:1;overflow-y:auto;padding:12px;min-height:0}
 .settings-section{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #202225}
 .settings-section:last-child{border-bottom:none}
@@ -129,7 +113,6 @@ body.light-theme .me-name{color:#060607}
 .settings-toggle.active .settings-toggle-slider{transform:translateX(20px)}
 .color-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 .color-option{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;position:relative}
-.color-option:hover{transform:scale(1.1)}
 .color-option.selected{border-color:#5865f2}
 .color-option.selected::after{content:'✓';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-weight:700;font-size:18px}
 .color-default{background:linear-gradient(135deg,#667eea,#764ba2)}
@@ -148,7 +131,6 @@ body.light-theme .me-name{color:#060607}
 .cur.space::before{content:'🔑';font-size:13px;margin-right:6px}
 .feed{flex:1;overflow-y:auto;padding:16px}
 .row{display:flex;padding:4px 0;margin-bottom:8px;position:relative;transition:background .15s}
-.row:hover{background:rgba(0,0,0,.1);margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;border-radius:4px}
 .r-ico{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;margin-right:12px;flex-shrink:0}
 .r-ico.color-red,.ico.color-red{background:linear-gradient(135deg,#ff6b6b,#ee5a6f)}
 .r-ico.color-orange,.ico.color-orange{background:linear-gradient(135deg,#ffa500,#ff8c00)}
@@ -170,39 +152,30 @@ body.light-theme .me-name{color:#060607}
 .row.grouped .r-ico,.row.grouped .r-head{display:none}
 .row.grouped .r-body{margin-left:52px}
 .r-media{max-width:400px;max-height:300px;border-radius:8px;margin-top:8px;cursor:pointer;transition:transform .2s}
-.r-media:hover{transform:scale(1.02)}
 .r-ref{background:#2f3136;border-left:3px solid #5865f2;padding:4px 8px;margin-bottom:4px;border-radius:0 4px 4px 0;font-size:13px;color:#96989d}
 .r-ref-by{color:#5865f2;font-weight:500}
 .r-acts{position:absolute;right:8px;top:-8px;background:#2f3136;border-radius:4px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.row:hover .r-acts{display:flex}
 .r-act{background:none;border:none;color:#96989d;padding:6px 8px;cursor:pointer;font-size:14px;transition:all .15s}
-.r-act:hover{color:#fff;background:#3a3c42}
-.r-act.danger:hover{color:#ed4245}
 .marks{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .mark{background:#3a3c42;border:1px solid transparent;border-radius:6px;padding:2px 6px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s}
-.mark:hover{border-color:#5865f2;transform:scale(1.05)}
 .mark.active{background:rgba(88,101,242,.3);border-color:#5865f2}
 .mark-n{font-size:12px;color:#dcddde}
 .picker{position:absolute;bottom:100%;right:0;background:#2f3136;border-radius:8px;padding:8px;display:none;box-shadow:0 4px 12px rgba(0,0,0,.5);z-index:100;animation:fadeIn .2s}
 .picker.show{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
 .picker button{background:none;border:none;font-size:20px;cursor:pointer;padding:4px;border-radius:4px;transition:all .15s}
-.picker button:hover{background:#3a3c42;transform:scale(1.2)}
 .compose{padding:0 16px 16px;position:relative}
 .hint{height:24px;font-size:12px;color:#72767d;font-style:italic;display:flex;align-items:center}
 .ref-bar{background:#40444b;border-radius:8px 8px 0 0;padding:8px 12px;display:none;align-items:center;justify-content:space-between}
 .ref-bar.show{display:flex}
 .ref-text{color:#dcddde;font-size:13px}
 .ref-x{background:none;border:none;color:#96989d;cursor:pointer;font-size:18px;transition:color .2s}
-.ref-x:hover{color:#fff}
 .box{background:#40444b;border-radius:8px;padding:12px;display:flex;align-items:center;gap:8px}
 .ref-bar.show+.box{border-radius:0 0 8px 8px}
 .fld{flex:1;background:none;border:none;color:#dcddde;font-size:15px;outline:none}
 .fld::placeholder{color:#72767d}
 .ibtn{background:none;border:none;color:#96989d;cursor:pointer;font-size:20px;padding:4px 8px;border-radius:4px;transition:all .2s}
-.ibtn:hover{background:#3a3c42;color:#fff}
 .ibtn:disabled{opacity:.5;cursor:not-allowed}
 .go{background:#5865f2;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:500;transition:background .2s}
-.go:hover{background:#4752c4}
 .go:disabled{background:#4e5058;cursor:not-allowed}
 .pic-input{display:none}
 .pic-prev{position:relative;display:inline-block;margin-right:8px}
@@ -218,13 +191,10 @@ body.light-theme .me-name{color:#060607}
 .toast-actions{display:flex;gap:8px}
 .toast-btn{flex:1;padding:8px;border:none;border-radius:4px;font-weight:500;cursor:pointer;font-size:13px;transition:all .2s}
 .toast-accept{background:#3ba55d;color:#fff}
-.toast-accept:hover{background:#2d8659}
 .toast-decline{background:#ed4245;color:#fff}
-.toast-decline:hover{background:#c93b3e}
 ::-webkit-scrollbar{width:8px}
 ::-webkit-scrollbar-track{background:#2f3136}
 ::-webkit-scrollbar-thumb{background:#202225;border-radius:4px}
-::-webkit-scrollbar-thumb:hover{background:#1a1c1f}
 #loginOverlay{position:fixed;inset:0;z-index:2000;background:linear-gradient(135deg,#1a1c20 0%,#2f3136 50%,#1a1c20 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px}
 .login-title{font-family:'Great Vibes',cursive;font-size:72px;color:#fff;margin-bottom:30px;text-shadow:0 0 20px rgba(88,101,242,.5),0 0 40px rgba(88,101,242,.3);animation:glow 2s ease-in-out infinite}
 @keyframes glow{0%,100%{text-shadow:0 0 20px rgba(88,101,242,.5),0 0 40px rgba(88,101,242,.3)}50%{text-shadow:0 0 30px rgba(88,101,242,.7),0 0 60px rgba(88,101,242,.5)}}
@@ -233,10 +203,8 @@ body.light-theme .me-name{color:#060607}
 #usernameInput,#pwdInput{width:100%;padding:12px;border-radius:6px;border:none;background:#40444b;color:#fff;font-size:14px;transition:box-shadow .2s;margin-bottom:12px}
 #usernameInput:focus,#pwdInput:focus{outline:none;box-shadow:0 0 0 2px #5865f2}
 #loginBtn{width:100%;margin-top:0;padding:12px;border:none;border-radius:6px;background:#5865f2;color:#fff;cursor:pointer;font-weight:600;font-size:14px;transition:background .2s}
-#loginBtn:hover{background:#4752c4}
 #loginBtn:disabled{opacity:.6;cursor:wait}
 .alt-login{margin-top:16px;color:#5865f2;font-size:13px;cursor:pointer;transition:all .2s;text-decoration:underline;text-underline-offset:2px}
-.alt-login:hover{color:#7289da;transform:translateY(-1px)}
 #loginError{margin-top:10px;color:#ed4245;font-size:13px;min-height:20px}
 .empty{text-align:center;color:#72767d;padding:12px;font-size:12px}
 .modal-overlay{position:fixed;inset:0;z-index:1500;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center}
@@ -246,7 +214,6 @@ body.light-theme .me-name{color:#060607}
 .modal-header{padding:16px;background:#5865f2;color:#fff;display:flex;justify-content:space-between;align-items:center}
 .modal-title{font-size:18px;font-weight:700}
 .modal-close{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .2s}
-.modal-close:hover{background:rgba(255,255,255,.3)}
 .modal-body{padding:16px;overflow-y:auto;flex:1}
 .rules-intro{color:#96989d;font-size:13px;margin-bottom:12px}
 .rule{background:#40444b;border-left:3px solid #5865f2;padding:10px 12px;border-radius:6px;margin-bottom:8px;color:#dcddde;font-size:13px;line-height:1.4}
@@ -263,38 +230,30 @@ body.light-theme .me-name{color:#060607}
 .form-input:focus,.form-select:focus{border-color:#5865f2;outline:none}
 .btn{width:100%;padding:10px;border:none;border-radius:4px;font-weight:600;cursor:pointer;font-size:13px;margin-top:8px;transition:all .2s}
 .btn-primary{background:#5865f2;color:#fff}
-.btn-primary:hover{background:#4752c4}
 .btn-success{background:#3ba55d;color:#fff}
-.btn-success:hover{background:#2d8659}
 .btn-danger{background:#ed4245;color:#fff}
-.btn-danger:hover{background:#c93b3e}
 #ctlPanel{position:fixed;bottom:60px;left:8px;width:500px;max-width:calc(100vw - 16px);max-height:500px;background:#2f3136;border:1px solid #202225;border-radius:8px;display:none;flex-direction:column;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 #ctlPanel.show{display:flex}
 .cp-header{padding:12px 16px;border-bottom:1px solid #202225;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 .cp-title{color:#fff;font-weight:600;font-size:14px}
 .cp-close{background:none;border:none;color:#96989d;cursor:pointer;font-size:20px;transition:color .2s}
-.cp-close:hover{color:#fff}
 .cp-tabs{display:flex;padding:8px;gap:6px;border-bottom:1px solid #202225;flex-wrap:wrap;flex-shrink:0;background:#26282d}
 .cp-tab{padding:8px 12px;background:none;border:none;color:#96989d;cursor:pointer;border-radius:4px;font-size:11px;font-weight:600;transition:all .15s}
-.cp-tab:hover{background:#3a3c42;color:#dcddde}
 .cp-tab.active{background:#5865f2;color:#fff}
 .cp-content{flex:1;overflow-y:auto;padding:12px;min-height:0}
 .cp-section{display:none}
 .cp-section.active{display:block}
 .cp-user{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#40444b;border-radius:6px;margin-bottom:6px;transition:background .15s}
-.cp-user:hover{background:#474b52}
 .cp-user-info{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
 .cp-user-ico{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;flex-shrink:0}
 .cp-user-name{color:#fff;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cp-user-actions{display:flex;gap:4px;flex-shrink:0}
 .cp-btn{padding:5px 9px;border:none;border-radius:3px;cursor:pointer;font-size:10px;font-weight:600;color:#fff;transition:opacity .2s}
-.cp-btn:hover{opacity:.8}
 .cp-btn-eject{background:#faa61a}
 .cp-btn-silence{background:#9b59b6}
 .cp-btn-bar{background:#ed4245}
 .fx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
 .fx-btn{padding:8px 5px;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;color:#fff;background:#5865f2;transition:all .2s}
-.fx-btn:hover{opacity:.9;transform:scale(1.02)}
 .fx-btn.warn{background:#faa61a}
 .fx-btn.danger{background:#ed4245}
 .fx-btn.success{background:#3ba55d}
@@ -303,10 +262,8 @@ body.light-theme .me-name{color:#060607}
 .lst{max-height:120px;overflow-y:auto;background:#40444b;border-radius:4px;padding:8px;margin-bottom:8px}
 .lst-item{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#2f3136;border-radius:3px;margin-bottom:4px;font-size:11px;color:#dcddde}
 .lift-btn{background:#3ba55d;color:#fff;border:none;padding:4px 8px;border-radius:3px;font-size:9px;cursor:pointer;transition:background .2s;font-weight:600}
-.lift-btn:hover{background:#2d8659}
 .ct-selector{display:flex;gap:6px;margin-top:8px}
 .ct-btn{flex:1;padding:6px;background:#40444b;border:2px solid transparent;border-radius:4px;color:#fff;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;text-align:center}
-.ct-btn:hover{border-color:#5865f2}
 .ct-btn.selected{border-color:#3ba55d;background:rgba(59,165,93,.2)}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
@@ -326,23 +283,73 @@ body.light-theme .me-name{color:#060607}
 #particles{position:absolute;inset:0;width:100%;height:100%;z-index:0}
 .login-title,#loginCard{position:relative;z-index:1}
 
-#animBtn{font-size:13px;font-weight:700;letter-spacing:.5px}
-#animPanel{position:absolute;left:16px;bottom:100%;width:420px;max-width:calc(100% - 32px);height:360px;max-height:60vh;background:#2f3136;border:1px solid #202225;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none;flex-direction:column;z-index:50}
-#animPanel.show{display:flex}
-#animSearch{margin:8px;padding:10px;border:none;border-radius:6px;background:#40444b;color:#fff;font-size:14px;outline:none}
-#animGrid{flex:1;overflow-y:auto;padding:0 8px 8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;align-content:start}
-#animGrid .empty{grid-column:1/-1}
-.anim-item{width:100%;height:90px;object-fit:cover;border-radius:4px;cursor:pointer;background:#202225}
-.anim-item:hover{outline:2px solid #5865f2}
-.anim-credit{padding:4px 8px;font-size:10px;color:#72767d;text-align:right}
-body.light-theme #animPanel{background:#fff;border-color:#e3e5e8}
-body.light-theme #animSearch{background:#ebedef;color:#2e3338}
 
 .mob-btn{display:none;width:40px;height:40px;flex-shrink:0;align-items:center;justify-content:center;background:none;border:none;color:#96989d;font-size:20px;border-radius:6px;cursor:pointer}
 .mob-btn:active{background:#3a3c42}
 body.light-theme .mob-btn{color:#4f5660}
 .drawer-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100}
 
+/* hover styles only where a real pointer exists (stops the double-tap on phones) */
+@media (hover:hover){
+body.light-theme .item:hover,body.light-theme .mem:hover,body.light-theme .av-item:hover{background:#e3e5e8;color:#060607}
+body.light-theme .row:hover{background:rgba(0,0,0,.05)}
+.right-toggle:hover{color:#fff}
+.item:hover{background:#3a3c42;color:#dcddde}
+.item:hover .xbtn{opacity:1}
+.xbtn:hover{color:#ed4245}
+.sp-btn:hover{background:#4752c4}
+.sp-btn.alt:hover{background:#5d6269}
+.av-item:hover{background:#3a3c42;color:#dcddde}
+.av-btn.leave:hover{background:#c93b3e}
+.av-btn.mute:hover{background:#4752c4}
+.mem:hover{background:#3a3c42}
+.mem:hover .mem-btn{opacity:1}
+.me-area:hover{background:#2a2d31}
+.settings-btn:hover{background:#3a3c42;color:#fff}
+.settings-close:hover{color:#fff}
+.color-option:hover{transform:scale(1.1)}
+.row:hover{background:rgba(0,0,0,.1);margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;border-radius:4px}
+.r-media:hover{transform:scale(1.02)}
+.row:hover .r-acts{display:flex}
+.r-act:hover{color:#fff;background:#3a3c42}
+.r-act.danger:hover{color:#ed4245}
+.mark:hover{border-color:#5865f2;transform:scale(1.05)}
+.picker button:hover{background:#3a3c42;transform:scale(1.2)}
+.ref-x:hover{color:#fff}
+.ibtn:hover{background:#3a3c42;color:#fff}
+.go:hover{background:#4752c4}
+.toast-accept:hover{background:#2d8659}
+.toast-decline:hover{background:#c93b3e}
+::-webkit-scrollbar-thumb:hover{background:#1a1c1f}
+#loginBtn:hover{background:#4752c4}
+.alt-login:hover{color:#7289da;transform:translateY(-1px)}
+.modal-close:hover{background:rgba(255,255,255,.3)}
+.btn-primary:hover{background:#4752c4}
+.btn-success:hover{background:#2d8659}
+.btn-danger:hover{background:#c93b3e}
+.cp-close:hover{color:#fff}
+.cp-tab:hover{background:#3a3c42;color:#dcddde}
+.cp-user:hover{background:#474b52}
+.cp-btn:hover{opacity:.8}
+.fx-btn:hover{opacity:.9;transform:scale(1.02)}
+.lift-btn:hover{background:#2d8659}
+.ct-btn:hover{border-color:#5865f2}
+}
+@media (hover:none){.row.tapped .r-acts{display:flex}}
+button,.item,.av-item,.mem,.r-act,.mark,.sp-btn,.go,.ibtn,.cp-tab,.color-option,.settings-toggle,.alt-login{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.r-media{min-height:40px}
+.login-tabs{display:flex;gap:6px;margin-bottom:14px}
+.login-tab{flex:1;padding:8px 4px;border:none;border-radius:6px;background:#40444b;color:#96989d;font-size:13px;font-weight:600;cursor:pointer}
+.login-tab.active{background:#5865f2;color:#fff}
+.acct-row{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;background:#40444b;border-radius:6px;margin-bottom:6px}
+.acct-name{color:#fff;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.acct-role{font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;background:#2f3136;color:#96989d;margin-left:6px}
+.acct-role.owner{color:#e74c3c}.acct-role.admin{color:#faa61a}.acct-role.vip{color:#f47fff}
+.acct-btns{display:flex;gap:4px;flex-shrink:0}
+.acct-btn{padding:5px 8px;border:none;border-radius:3px;cursor:pointer;font-size:10px;font-weight:600;color:#fff;background:#4f545c}
+.acct-btn.on{background:#5865f2}
+body.light-theme .acct-row{background:#ebedef}body.light-theme .acct-name{color:#2e3338}
+body.light-theme .login-tab{background:#ebedef}body.light-theme .login-tab.active{background:#5865f2;color:#fff}
 @media (max-width:768px){
   body,.shell{height:100vh;height:100dvh}
   .side{position:fixed;top:0;bottom:0;left:0;width:82vw;max-width:300px;z-index:1200;transform:translateX(-100%);transition:transform .25s}
@@ -372,8 +379,7 @@ body.light-theme .mob-btn{color:#4f5660}
 
   .compose{padding:0 8px calc(8px + env(safe-area-inset-bottom))}
   .box{padding:8px}
-  .fld,#usernameInput,#pwdInput,.sp-in,.form-input,.form-select,#animSearch{font-size:16px}
-  #animPanel{left:8px;right:8px;width:auto;max-width:none;height:50vh}
+  .fld,#usernameInput,#pwdInput,.sp-in,.form-input,.form-select{font-size:16px}
 
   .item,.av-item{padding:12px}
   .mem{padding:10px 12px}
@@ -400,12 +406,21 @@ body.light-theme .mob-btn{color:#4f5660}
 <div class="login-title">The Chet</div>
 <div id="loginCard">
 <h2>Welcome to The Chet</h2>
-<input type="text" id="usernameInput" placeholder="Name" maxlength="30" autocomplete="username">
-<div id="adminField" style="display:none">
-<input type="password" id="pwdInput" placeholder="Access key" autocomplete="current-password">
+<div class="login-tabs">
+<button class="login-tab active" data-mode="guest">Guest</button>
+<button class="login-tab" data-mode="login">Log in</button>
+<button class="login-tab" data-mode="signup">Sign up</button>
 </div>
-<button id="loginBtn">Join</button>
-<div class="alt-login" id="adminToggle">Staff access</div>
+<div id="loginHint" style="color:#96989d;font-size:12px;margin:-4px 0 10px;min-height:16px"></div>
+<input type="text" id="usernameInput" placeholder="Username" maxlength="30" autocomplete="username">
+<div id="acctField" style="display:none">
+<input type="password" id="acctPwd" placeholder="Password" maxlength="128" autocomplete="current-password">
+</div>
+<div id="adminField" style="display:none">
+<input type="password" id="pwdInput" placeholder="Admin / VIP password" autocomplete="off">
+</div>
+<button id="loginBtn">Join as guest</button>
+<div class="alt-login" id="adminToggle">Admin login</div>
 <div id="loginError"></div>
 </div>
 </div>
@@ -413,10 +428,10 @@ body.light-theme .mob-btn{color:#4f5660}
 <div class="modal-overlay" id="rulesModal">
 <div class="modal">
 <div class="modal-header">
-<div class="modal-title">📜 Guidelines</div>
+<div class="modal-title">📜 Server Rules</div>
 </div>
 <div class="modal-body">
-<div class="rules-intro">Please read and agree to the guidelines before joining.</div>
+<div class="rules-intro">Please read and agree to the rules before joining.</div>
 <div id="rulesList"></div>
 <div class="rules-actions">
 <button class="btn btn-danger" id="declineRules">Cancel</button>
@@ -432,7 +447,7 @@ body.light-theme .mob-btn{color:#4f5660}
 <div class="modal-overlay" id="helpModal">
 <div class="modal">
 <div class="modal-header">
-<div class="modal-title">📋 Shortcuts</div>
+<div class="modal-title">📋 Commands Help</div>
 <button class="modal-close" id="closeHelp">×</button>
 </div>
 <div class="modal-body" id="helpContent"></div>
@@ -450,10 +465,10 @@ body.light-theme .mob-btn{color:#4f5660}
 </div>
 <div class="settings-content">
 <div class="settings-section">
-<div class="settings-section-title">Alerts</div>
+<div class="settings-section-title">Notifications</div>
 <div class="settings-option">
 <div>
-<div class="settings-option-label">Browser Alerts</div>
+<div class="settings-option-label">Browser Notifications</div>
 <div class="settings-option-desc" id="notifPermStatus"></div>
 </div>
 <button class="toast-btn toast-accept" id="enableBrowserNotif" style="flex:none;padding:6px 12px">Enable</button>
@@ -461,7 +476,7 @@ body.light-theme .mob-btn{color:#4f5660}
 <div class="settings-option">
 <div>
 <div class="settings-option-label">Off</div>
-<div class="settings-option-desc">Disable all alerts</div>
+<div class="settings-option-desc">Disable all message notifications</div>
 </div>
 <div class="settings-toggle" id="notifOffToggle">
 <div class="settings-toggle-slider"></div>
@@ -469,8 +484,8 @@ body.light-theme .mob-btn{color:#4f5660}
 </div>
 <div class="settings-option">
 <div>
-<div class="settings-option-label">Private Only</div>
-<div class="settings-option-desc">Only alert for private threads</div>
+<div class="settings-option-label">DM Notifications Only</div>
+<div class="settings-option-desc">Only notify for direct messages</div>
 </div>
 <div class="settings-toggle" id="notifDMToggle">
 <div class="settings-toggle-slider"></div>
@@ -478,12 +493,23 @@ body.light-theme .mob-btn{color:#4f5660}
 </div>
 <div class="settings-option">
 <div>
-<div class="settings-option-label">All Alerts</div>
-<div class="settings-option-desc">Alert for everything</div>
+<div class="settings-option-label">All Notifications</div>
+<div class="settings-option-desc">Notify for all messages</div>
 </div>
 <div class="settings-toggle active" id="notifAllToggle">
 <div class="settings-toggle-slider"></div>
 </div>
+</div>
+</div>
+
+<div class="settings-section">
+<div class="settings-section-title">Account</div>
+<div class="settings-option">
+<div>
+<div class="settings-option-label" id="acctLabel">Guest</div>
+<div class="settings-option-desc">Messages are deleted after 3 days</div>
+</div>
+<button class="toast-btn toast-decline" id="logoutBtn" style="flex:none;padding:6px 12px">Log out</button>
 </div>
 </div>
 
@@ -502,11 +528,11 @@ body.light-theme .mob-btn{color:#4f5660}
 </div>
 
 <div class="settings-section">
-<div class="settings-section-title">Display</div>
+<div class="settings-section-title">Chat Features</div>
 <div class="settings-option">
 <div>
-<div class="settings-option-label">Word Filter</div>
-<div class="settings-option-desc">Replace flagged words with asterisks</div>
+<div class="settings-option-label">Profanity Filter</div>
+<div class="settings-option-desc">Replace bad words with asterisks</div>
 </div>
 <div class="settings-toggle" id="profanityToggle">
 <div class="settings-toggle-slider"></div>
@@ -514,8 +540,8 @@ body.light-theme .mob-btn{color:#4f5660}
 </div>
 <div class="settings-option">
 <div>
-<div class="settings-option-label">Group Entries</div>
-<div class="settings-option-desc">Combine consecutive entries from the same member</div>
+<div class="settings-option-label">Group Messages</div>
+<div class="settings-option-desc">Combine consecutive messages from same user</div>
 </div>
 <div class="settings-toggle" id="groupingToggle">
 <div class="settings-toggle-slider"></div>
@@ -536,63 +562,63 @@ body.light-theme .mob-btn{color:#4f5660}
 
 <div id="ctlPanel">
 <div class="cp-header">
-<div class="cp-title">⚡ Control Panel</div>
+<div class="cp-title">⚡ Admin Panel</div>
 <button class="cp-close" id="closeCtl">×</button>
 </div>
 <div class="cp-tabs">
-<button class="cp-tab active" data-tab="users">Members</button>
-<button class="cp-tab" data-tab="mod">Manage</button>
+<button class="cp-tab active" data-tab="users">Users</button>
+<button class="cp-tab" data-tab="mod">Moderate</button>
 <button class="cp-tab" data-tab="fx">Effects</button>
-<button class="cp-tab" data-tab="bans">Lists</button>
-<button class="cp-tab" data-tab="settings">Options</button>
+<button class="cp-tab" data-tab="bans">Bans</button>
+<button class="cp-tab" data-tab="settings">Settings</button>
 <button class="cp-tab" data-tab="owner" id="ownerTab" style="display:none">👑 Owner</button>
 </div>
 <div class="cp-content">
 <div class="cp-section active" data-section="users" id="cpMem"></div>
 <div class="cp-section" data-section="mod">
 <div class="form-group">
-<label class="form-label">Target</label>
+<label class="form-label">Target User</label>
 <select class="form-select" id="cUser"></select>
 </div>
 <div class="form-group">
-<label class="form-label">Action</label>
+<label class="form-label">Action Type</label>
 <select class="form-select" id="cAct">
-<option value="kick">End session</option>
-<option value="timeout">Pause</option>
-<option value="mute">Silence</option>
-<option value="ban">Bar</option>
-<option value="warning">Send notice</option>
+<option value="kick">Kick User</option>
+<option value="timeout">Timeout</option>
+<option value="mute">Mute</option>
+<option value="ban">Ban</option>
+<option value="warning">Send Warning</option>
 </select>
 </div>
 <div class="form-group">
-<label class="form-label">Duration (seconds, for pause / silence)</label>
+<label class="form-label">Duration (seconds, for timeout / mute)</label>
 <input type="number" class="form-input" id="cDur" value="60" min="1">
 </div>
 <div class="form-group">
 <label class="form-label">Reason (optional)</label>
-<input type="text" class="form-input" id="cWhy" placeholder="Reason..." maxlength="200">
+<input type="text" class="form-input" id="cWhy" placeholder="Violation reason..." maxlength="200">
 </div>
 <div id="cOpts" style="display:none">
 <div class="form-group">
-<label class="form-label">Mode</label>
+<label class="form-label">Ban Mode</label>
 <select class="form-select" id="cMode">
-<option value="full">Full: removed, can't return</option>
-<option value="mute">Silenced: can't post anywhere</option>
-<option value="dm">Limited: no boards, private threads still work</option>
+<option value="full">Full ban: kicked, can't rejoin</option>
+<option value="mute">Infinite mute: can't type anywhere</option>
+<option value="dm">Chat block: no channels, DMs still work</option>
 </select>
 </div>
 <label class="form-label">Applies to</label>
 <div class="ct-selector" id="cTypes">
-<button class="ct-btn" data-type="username">Name Only</button>
+<button class="ct-btn" data-type="username">Username Only</button>
 <button class="ct-btn selected" data-type="ip">IP Only</button>
 <button class="ct-btn" data-type="both">Both</button>
 </div>
 </div>
-<button class="btn btn-primary" id="cRun">Execute</button>
+<button class="btn btn-primary" id="cRun">Execute Action</button>
 </div>
 <div class="cp-section" data-section="fx">
 <div class="form-group">
-<label class="form-label">Target</label>
+<label class="form-label">Target User</label>
 <select class="form-select" id="fxUser"></select>
 </div>
 <div class="fx-grid">
@@ -610,46 +636,47 @@ body.light-theme .mob-btn{color:#4f5660}
 <button class="fx-btn success" id="fxAll">🎊 All</button>
 </div>
 <div class="form-group">
-<label class="form-label">Announcement</label>
-<input type="text" class="form-input" id="annMsg" placeholder="Announcement..." maxlength="500">
+<label class="form-label">Server Broadcast</label>
+<input type="text" class="form-input" id="annMsg" placeholder="Announcement message..." maxlength="500">
 </div>
-<button class="btn btn-primary" id="annSend">📢 Announce to All</button>
+<button class="btn btn-primary" id="annSend">📢 Broadcast to All</button>
 </div>
 <div class="cp-section" data-section="bans">
-<div class="form-label">Barred Names</div>
+<div class="form-label">Banned Usernames</div>
 <div class="lst" id="lstNames"></div>
-<div class="form-label">Barred IP Addresses</div>
+<div class="form-label">Banned IP Addresses</div>
 <div class="lst" id="lstIps"></div>
-<div class="form-label">Silenced / Limited</div>
+<div class="form-label">Muted / Chat-blocked</div>
 <div class="lst" id="lstLim"></div>
 <button class="btn btn-primary" id="lstRefresh">🔄 Refresh Lists</button>
 </div>
 <div class="cp-section" data-section="settings">
 <div class="form-group">
-<label class="form-label">Pace Limit Duration (seconds)</label>
+<label class="form-label">Slow Mode Duration (seconds)</label>
 <input type="number" class="form-input" id="paceDur" value="5" min="1">
 </div>
 <div class="form-group">
 <label style="color:#dcddde;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px">
-<input type="checkbox" id="paceOn"> Enable Pace Limit
+<input type="checkbox" id="paceOn"> Enable Slow Mode
 </label>
 </div>
-<button class="btn btn-primary" id="paceApply">Apply</button>
+<button class="btn btn-primary" id="paceApply">Apply Slow Mode</button>
 <div class="form-group" style="margin-top:16px">
-<label class="form-label">Clear Board</label>
+<label class="form-label">Clear Channel Messages</label>
 <select class="form-select" id="clrBoard">
 <option value="general">general</option>
 <option value="gaming">gaming</option>
 <option value="memes">memes</option>
 </select>
 </div>
-<button class="btn btn-danger" id="clrBtn">🗑️ Clear Board</button>
+<button class="btn btn-danger" id="clrBtn">🗑️ Clear Channel</button>
 </div>
 <div class="cp-section" data-section="owner">
-<div class="owner-section">
-<div class="section-title">👑 Owner</div>
-<p style="color:#96989d;font-size:12px;padding:8px">More options coming soon...</p>
-</div>
+<div class="section-title">👑 Accounts</div>
+<p style="color:#96989d;font-size:12px;margin-bottom:8px">Give an account VIP or Mod (admin) powers. Owner accounts can't be changed here.</p>
+<div class="form-group"><input type="text" class="form-input" id="acctSearch" placeholder="Search accounts..." maxlength="30" autocomplete="off"></div>
+<div id="acctList"></div>
+<button class="btn btn-primary" id="acctRefresh">🔄 Refresh Accounts</button>
 </div>
 </div>
 </div>
@@ -661,7 +688,7 @@ body.light-theme .mob-btn{color:#4f5660}
 <div class="hd">The Chet</div>
 <div class="lists">
 <div class="grp">
-<div class="grp-hd">Boards</div>
+<div class="grp-hd">Channels</div>
 <div class="item active" data-board="general">
 <span class="item-name">general</span>
 <span class="cnt">0</span>
@@ -676,26 +703,26 @@ body.light-theme .mob-btn{color:#4f5660}
 </div>
 </div>
 <div class="grp">
-<div class="grp-hd">Spaces</div>
+<div class="grp-hd">Custom Rooms</div>
 <div class="sp-form">
-<input type="text" class="sp-in" id="spCode" placeholder="Enter code" maxlength="20" autocomplete="off" spellcheck="false">
+<input type="text" class="sp-in" id="spCode" placeholder="Enter room code" maxlength="20" autocomplete="off" spellcheck="false">
 <button class="sp-btn" id="spJoin">Join</button>
-<button class="sp-btn alt" id="spNew" title="Make a random code">New</button>
+<button class="sp-btn alt" id="spNew" title="Make a random room code">New</button>
 </div>
 <div id="spList"></div>
 </div>
 <div class="grp">
-<div class="grp-hd">Private</div>
+<div class="grp-hd">Direct Messages</div>
 <div id="linkListEl"></div>
 </div>
 <div class="av-sec">
-<div class="grp-hd">Audio</div>
+<div class="grp-hd">Voice Channels</div>
 <div class="av-item" data-av="general">
 <span class="av-name">
 <svg class="av-icon" aria-hidden="true"><use href="#icon-speaker"></use></svg>
 general
 </span>
-<span class="av-stat" id="avStatusGeneral">0 online</span>
+<span class="av-stat" id="avStatusGeneral">0 users</span>
 </div>
 <div class="av-ctl" id="avCtlGeneral">
 <button class="av-btn mute" id="avMuteGeneral">🎤 Mute</button>
@@ -708,7 +735,7 @@ general
 <svg class="av-icon" aria-hidden="true"><use href="#icon-speaker"></use></svg>
 chill
 </span>
-<span class="av-stat" id="avStatusChill">0 online</span>
+<span class="av-stat" id="avStatusChill">0 users</span>
 </div>
 <div class="av-ctl" id="avCtlChill">
 <button class="av-btn mute" id="avMuteChill">🎤 Mute</button>
@@ -721,7 +748,7 @@ chill
 <svg class="av-icon" aria-hidden="true"><use href="#icon-speaker"></use></svg>
 gaming
 </span>
-<span class="av-stat" id="avStatusGaming">0 online</span>
+<span class="av-stat" id="avStatusGaming">0 users</span>
 </div>
 <div class="av-ctl" id="avCtlGaming">
 <button class="av-btn mute" id="avMuteGaming">🎤 Mute</button>
@@ -735,7 +762,7 @@ gaming
 <div class="dot" id="notifDot"></div>
 </div>
 <div class="me-name" id="myName">Member</div>
-<button class="settings-btn" id="ctlBtn" title="Control Panel" style="display:none">🛡️</button>
+<button class="settings-btn" id="ctlBtn" title="Admin Panel" style="display:none">🛡️</button>
 <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
 <div class="conn" id="connStatus"></div>
 </div>
@@ -743,21 +770,16 @@ gaming
 
 <div class="main">
 <div class="top">
-<button class="mob-btn" id="menuBtn" title="Boards">☰</button>
+<button class="mob-btn" id="menuBtn" title="Channels">☰</button>
 <div class="cur" id="curBoard">general</div>
 <div class="hd-acts" id="spTools" style="display:none">
 <span class="sp-count" id="spCount"></span>
 <button class="sp-btn" id="spCopy">Copy invite link</button>
 </div>
-<button class="mob-btn" id="memBtn" title="Members">👥</button>
+<button class="mob-btn" id="memBtn" title="Online users">👥</button>
 </div>
 <div class="feed" id="feedArea"></div>
 <div class="compose">
-<div id="animPanel">
-<input type="text" id="animSearch" placeholder="Search animations" autocomplete="off">
-<div id="animGrid"></div>
-<div class="anim-credit">Powered by GIPHY</div>
-</div>
 <div class="hint" id="hintEl"></div>
 <div class="ref-bar" id="refBar">
 <span class="ref-text" id="refText"></span>
@@ -765,10 +787,9 @@ gaming
 </div>
 <div class="box">
 <div id="picPrev"></div>
-<input type="text" class="fld" id="fld" placeholder="Add to #general (try /help)" maxlength="2000" autocomplete="off">
+<input type="text" class="fld" id="fld" placeholder="Message #general (try /help)" maxlength="2000" autocomplete="off">
 <input type="file" class="pic-input" id="picInput" accept="image/*">
-<button class="ibtn" id="picBtn" title="Attach image">📷</button>
-<button class="ibtn" id="animBtn" title="Animation">GIF</button>
+<button class="ibtn" id="picBtn" title="Upload image">📷</button>
 <button class="go" id="goBtn" disabled>Send</button>
 </div>
 </div>
@@ -777,7 +798,7 @@ gaming
 <div class="side right" id="rightSidebar">
 <div class="right-toggle" id="rightToggle">▶</div>
 <div class="hd">
-<span>Members</span>
+<span>Online Users</span>
 <span class="on-count" id="onCount">0</span>
 </div>
 <div class="mem-sec">
@@ -796,18 +817,18 @@ gaming
 
 const EMOJIS = ['👍','👎','❤️','😂','😮','😢','🔥','🎉','👀','💯'];
 const WS_FALLBACK = 'wss://chet.jplevandoski.workers.dev/s';
-const API_BASE = /^https?:$/.test(location.protocol) ? '' : 'https://chet.jplevandoski.workers.dev';
-const MAX_MEDIA_BYTES = 500 * 1024;
+const MAX_DATAURL_CHARS = 900000;            // images bigger than this are shrunk automatically
+const TTL_MS = 3 * 24 * 60 * 60 * 1000;      // the server deletes messages after 3 days
 const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 const RULES = [
   ['Be respectful', 'Treat everyone kindly. No harassment, bullying or personal attacks.'],
-  ['No hate', 'Slurs and discrimination of any kind are not allowed.'],
-  ['No flooding', "Don't repeat entries, flood the board, or spam attachments."],
+  ['No hate speech', 'Slurs and discrimination of any kind are not allowed.'],
+  ['No spam or flooding', "Don't repeat messages, flood the chat, or spam images."],
   ['Keep it clean', 'No NSFW, graphic, or illegal content.'],
   ['No impersonation', "Don't pretend to be staff or another member."],
   ['Respect staff', 'Follow instructions from admins and moderators.'],
-  ['Protect privacy', "Don't share other people's personal information. Space codes are for people you trust."]
+  ['Protect privacy', "Don't share other people's personal information. Room codes are for friends you trust."]
 ];
 
 const $ = id => document.getElementById(id);
@@ -834,6 +855,8 @@ function socketUrl() {
 /* ---------- state ---------- */
 let ws = null, connected = false, joinedOnce = false, noReconnect = false, reconnectNotified = false, reconnectTimer = null;
 let me = '', loginKey = '', uuid = store.get('uuid') || null;
+let token = store.get('token') || null, authMode = 'guest', loginTab = 'guest', acctPassword = '', isAccount = false;
+let accounts = [], tappedId = null;
 let isAdmin = false, isVIP = false, isOwner = false;
 let curBoard = 'general', viewType = 'board', curLink = null, refTo = null;
 const feeds = {}, linkFeeds = {}, linkPeers = {}, unreadBoards = {}, unreadLinks = {};
@@ -906,10 +929,10 @@ function updateAlertStatus() {
   if (!window.isSecureContext) { status.textContent = 'Needs an https page'; btn.style.display = 'none'; return; }
   const p = Notification.permission;
   if (p === 'granted') {
-    status.textContent = 'On: alerts appear when this tab is in the background';
+    status.textContent = 'On: notifications appear when this tab is in the background';
     btn.textContent = 'Send test'; btn.style.display = '';
   } else if (p === 'denied') {
-    status.textContent = "Blocked: allow alerts for this site in your browser's site settings";
+    status.textContent = "Blocked: allow notifications for this site in your browser's site settings";
     btn.style.display = 'none';
   } else {
     status.textContent = 'Not enabled yet';
@@ -1055,7 +1078,13 @@ function connect() {
   ws = sock;
 
   sock.onopen = () => {
-    tx({ type: 'open', name: me, uuid: uuid || undefined, password: loginKey || undefined });
+    tx({
+      type: 'open', name: me, mode: authMode,
+      uuid: authMode === 'guest' ? (uuid || undefined) : undefined,
+      password: acctPassword || undefined,
+      token: authMode === 'resume' ? token : undefined,
+      key: loginKey || undefined
+    });
   };
   sock.onmessage = e => {
     try { handle(JSON.parse(e.data)); } catch (er) { console.error('Handler error:', er); }
@@ -1071,7 +1100,7 @@ function connect() {
 
     if (e.code === 4000) {
       noReconnect = true;
-      toast('⚠️', 'You opened this from another tab or window, so this one was disconnected.');
+      toast('⚠️', 'You signed in from another tab or window, so this one was disconnected.');
       return;
     }
     if (noReconnect) return;
@@ -1086,12 +1115,30 @@ function connect() {
 const adminFieldShown = () => $('adminField').style.display !== 'none';
 function showAdminField(show) {
   $('adminField').style.display = show ? 'block' : 'none';
-  $('adminToggle').textContent = show ? 'Cancel staff access' : 'Staff access';
+  $('adminToggle').textContent = show ? 'Cancel admin login' : 'Admin login';
   if (show) $('pwdInput').focus(); else $('pwdInput').value = '';
+}
+
+function setLoginTab(mode) {
+  loginTab = mode;
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+  $('acctField').style.display = mode === 'guest' ? 'none' : 'block';
+  $('acctPwd').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+  $('loginBtn').textContent = mode === 'guest' ? 'Join as guest' : mode === 'login' ? 'Log in' : 'Create account';
+  $('loginHint').textContent = mode === 'guest' ? "No account needed. You can't use a username that belongs to an account."
+    : mode === 'login' ? 'Log in to keep your username, DMs and roles on any device.'
+    : 'Pick a username (3-20 letters, numbers, _ . -) and a password. No email needed.';
+  $('loginError').textContent = '';
 }
 
 function login() {
   $('loginError').textContent = '';
+  if (loginTab !== 'guest') {
+    if (!$('usernameInput').value.trim()) { $('loginError').textContent = 'Enter a username'; return; }
+    const pw = $('acctPwd').value;
+    if (!pw) { $('loginError').textContent = 'Enter a password'; return; }
+    if (loginTab === 'signup' && pw.length < 6) { $('loginError').textContent = 'Password must be at least 6 characters'; return; }
+  }
   $('rulesModal').classList.add('show');
 }
 
@@ -1101,6 +1148,8 @@ function acceptRules() {
   $('rulesModal').classList.remove('show');
   me = $('usernameInput').value.trim() || 'Guest';
   loginKey = adminFieldShown() ? $('pwdInput').value : '';
+  authMode = loginTab;
+  acctPassword = loginTab === 'guest' ? '' : $('acctPwd').value;
   noReconnect = false;
   $('loginError').textContent = 'Connecting...';
   setLoginBusy(true);
@@ -1109,6 +1158,8 @@ function acceptRules() {
 }
 
 function failLogin(message) {
+  if (authMode === 'resume') { token = null; store.set('token', ''); authMode = loginTab; }
+  acctPassword = '';
   noReconnect = true;
   joinedOnce = false;
   setLoginBusy(false);
@@ -1122,7 +1173,19 @@ function failLogin(message) {
 function handle(d) {
   const h = {
     ready: () => {
-      uuid = d.uuid; store.set('uuid', uuid);
+      uuid = d.uuid;
+      isAccount = !!d.account;
+      if (isAccount) {
+        if (d.token) { token = d.token; store.set('token', token); }
+        store.set('username', d.name);
+        authMode = 'resume';
+      } else {
+        store.set('uuid', uuid);
+        authMode = 'guest';
+      }
+      acctPassword = '';
+      $('acctLabel').textContent = isAccount ? 'Signed in as ' + d.name : 'Guest: ' + d.name;
+      $('logoutBtn').textContent = isAccount ? 'Log out' : 'Leave';
       if (d.name) me = d.name;
       isOwner = !!d.isOwner; isAdmin = !!d.isAdmin; isVIP = !!d.isVIP;
       connected = true; joinedOnce = true; reconnectNotified = false;
@@ -1147,6 +1210,14 @@ function handle(d) {
       if (pendingInvite) { requestSpace(pendingInvite, false); pendingInvite = null; }
     },
     denied: () => failLogin(d.message || 'Could not join'),
+    role: () => {
+      isOwner = !!d.isOwner; isAdmin = !!d.isAdmin; isVIP = !!d.isVIP;
+      $('ownerTab').style.display = isOwner ? 'block' : 'none';
+      $('ctlBtn').style.display = isStaff() ? 'flex' : 'none';
+      toast('🛡️', d.message || 'Your role changed');
+      draw();
+    },
+    acctList: () => { accounts = d.accounts || []; renderAccts(); },
     linkList: () => d.links.forEach(c => { linkPeers[c.thread] = c.with; addLink(c.thread, c.with); }),
     hiddenList: () => { hiddenNames = new Set(d.members.map(n => n.toLowerCase())); updMembers(); },
 
@@ -1167,10 +1238,10 @@ function handle(d) {
       if (m.by === me) return;
       if (!viewing) { unreadBoards[m.board] = (unreadBoards[m.board] || 0) + 1; updateBoardBadge(m.board); }
       if (prefs.notifications === 'all') {
-        const preview = m.media && !m.body ? '[Attachment]' : cleanText(m.body).slice(0, 50);
+        const preview = m.media && !m.body ? '[Image]' : cleanText(m.body).slice(0, 50);
         showMark();
-        if (!viewing) toast('New entry', `${boardLabel(m.board)}: ${m.by}: ${preview}`);
-        showBrowserAlert(`New entry in ${boardLabel(m.board)}`, `${m.by}: ${preview}`);
+        if (!viewing) toast('💬 New Message', `${boardLabel(m.board)}: ${m.by}: ${preview}`);
+        showBrowserAlert(`New message in ${boardLabel(m.board)}`, `${m.by}: ${preview}`);
       }
     },
     log: () => { feeds[d.board] = d.items; if (viewType === 'board' && d.board === curBoard) draw(true); },
@@ -1178,20 +1249,20 @@ function handle(d) {
     activity: () => {
       const match = d.priv ? (viewType === 'link' && d.thread === curLink) : (viewType === 'board' && d.board === curBoard);
       if (!match) return;
-      $('hintEl').textContent = d.active ? `${d.name} is active...` : '';
+      $('hintEl').textContent = d.active ? `${d.name} is typing...` : '';
       clearTimeout(hintClear);
       if (d.active) hintClear = setTimeout(() => { $('hintEl').textContent = ''; }, 5000);
     },
 
     linkReq: () => {
-      toast('Request', `${d.from} wants to connect`, [
+      toast('💬 DM Request', `${d.from} wants to chat`, [
         { label: 'Accept', cls: 'toast-accept', onClick: () => tx({ type: 'linkRes', from: d.from, accepted: true }) },
         { label: 'Decline', cls: 'toast-decline', onClick: () => tx({ type: 'linkRes', from: d.from, accepted: false }) }
       ]);
-      showBrowserAlert('Request', `${d.from} wants to connect with you`);
+      showBrowserAlert('DM Request', `${d.from} wants to chat with you`);
     },
     linkOk: () => { linkPeers[d.thread] = d.with; addLink(d.thread, d.with); openLink(d.thread, d.with); },
-    linkNo: () => toast('❌', `${d.by} declined your request`),
+    linkNo: () => toast('❌', `${d.by} declined your DM request`),
     note: () => {
       const m = d.item;
       if (!linkPeers[m.thread] && m.by !== me) { linkPeers[m.thread] = m.by; addLink(m.thread, m.by); }
@@ -1203,10 +1274,10 @@ function handle(d) {
       if (!viewing) { unreadLinks[m.thread] = (unreadLinks[m.thread] || 0) + 1; updateLinkBadge(m.thread); }
       if (prefs.notifications !== 'off') {
         const partner = linkPeers[m.thread] || m.by;
-        const preview = m.media && !m.body ? '[Attachment]' : cleanText(m.body).slice(0, 50);
+        const preview = m.media && !m.body ? '[Image]' : cleanText(m.body).slice(0, 50);
         showMark();
-        if (!viewing) toast('New private entry', `@${partner}: ${preview}`);
-        showBrowserAlert(`New private entry from ${partner}`, preview);
+        if (!viewing) toast('💬 New DM', `@${partner}: ${preview}`);
+        showBrowserAlert(`New DM from ${partner}`, preview);
       }
     },
     noteLog: () => { linkFeeds[d.thread] = d.items; if (viewType === 'link' && d.thread === curLink) draw(true); },
@@ -1224,9 +1295,9 @@ function handle(d) {
     ejected: () => { noReconnect = true; alert(d.message); location.href = d.redirectUrl || 'https://google.com'; },
     barred: () => { noReconnect = true; alert(d.message); location.href = 'https://google.com'; },
     paused: () => { toast('⏰', d.message); lockInput(d.duration); },
-    silenced: () => { toast('🔇', d.message || `Silenced for ${d.duration}s`); lockInput(d.duration); },
+    silenced: () => { toast('🔇', d.message || `Muted for ${d.duration}s`); lockInput(d.duration); },
     limited: () => toast('🔇', d.message),
-    notice: () => toast(`⚠️ Notice #${d.count}`, d.message),
+    notice: () => toast(`⚠️ Warning #${d.count}`, d.message),
     announce: () => toast('📢', d.message),
     ctlOk: () => toast('✅', d.message || 'Done'),
     fault: () => toast('❌', d.message),
@@ -1266,7 +1337,7 @@ function handle(d) {
       }, i * 20);
     },
     rickRoll: () => window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank'),
-    forceDisconnect: () => { noReconnect = true; alert('Disconnected by staff'); if (ws) ws.close(); },
+    forceDisconnect: () => { noReconnect = true; alert('Disconnected by admin'); if (ws) ws.close(); },
 
     // audio
     avMembers: () => { avData[d.board] = d.members; updateAvUI(d.board); },
@@ -1319,10 +1390,10 @@ function makeMemberItem(u) {
   row.appendChild(el('span', 'mem-name' + (role ? ' ' + role : ''), u.name + (u.name === me ? ' (you)' : '')));
   if (u.name !== me) {
     const actions = el('span', 'mem-actions');
-    const lk = el('button', 'mem-btn', 'Private');
+    const lk = el('button', 'mem-btn', 'DM');
     lk.onclick = () => reqLink(u.name);
     const isHidden = hiddenNames.has(u.name.toLowerCase());
-    const hb = el('button', 'mem-btn hide-btn', isHidden ? 'Unhide' : 'Hide');
+    const hb = el('button', 'mem-btn hide-btn', isHidden ? 'Unblock' : 'Block');
     hb.onclick = () => tx(isHidden ? { type: 'unhide', name: u.name } : { type: 'hide', target: u.name });
     actions.append(lk, hb);
     row.appendChild(actions);
@@ -1348,19 +1419,19 @@ function updSelects() {
   fillSelect($('fxUser'), others);
 
   const box = $('cpMem');
-  if (!others.length) { box.replaceChildren(el('div', 'empty', 'No other members online')); return; }
+  if (!others.length) { box.replaceChildren(el('div', 'empty', 'No other users online')); return; }
   box.replaceChildren(...others.map(name => {
     const row = el('div', 'cp-user');
     const info = el('div', 'cp-user-info');
     info.appendChild(el('div', 'cp-user-ico', name.charAt(0).toUpperCase()));
     info.appendChild(el('div', 'cp-user-name', name));
     const actions = el('div', 'cp-user-actions');
-    const eject = el('button', 'cp-btn cp-btn-eject', 'End');
+    const eject = el('button', 'cp-btn cp-btn-eject', 'Kick');
     eject.onclick = () => tx({ type: 'ctlEject', target: name });
-    const silence = el('button', 'cp-btn cp-btn-silence', 'Silence 60s');
+    const silence = el('button', 'cp-btn cp-btn-silence', 'Mute 60s');
     silence.onclick = () => tx({ type: 'ctlSilence', target: name, duration: 60 });
-    const bar = el('button', 'cp-btn cp-btn-bar', 'Bar');
-    bar.onclick = () => { if (confirm(`Bar ${name}?`)) tx({ type: 'ctlBar', target: name, banType: selectedBarType }); };
+    const bar = el('button', 'cp-btn cp-btn-bar', 'Ban');
+    bar.onclick = () => { if (confirm(`Ban ${name}?`)) tx({ type: 'ctlBar', target: name, banType: selectedBarType }); };
     actions.append(eject, silence, bar);
     row.append(info, actions);
     return row;
@@ -1382,13 +1453,13 @@ function renderLists(d) {
   fill($('lstNames'), d.names.map(u => [u, () => tx({ type: 'ctlUnbar', name: u })]), 'None');
   fill($('lstIps'), d.ips.map(ip => [ip, () => tx({ type: 'ctlUnbarIp', ip })]), 'None');
   fill($('lstLim'), (d.restricted || []).map(r => [
-    `${r.value} (${r.kind}, ${r.mode === 'mute' ? 'silenced' : 'limited'})`,
+    `${r.value} (${r.kind}, ${r.mode === 'mute' ? 'muted' : 'chat-blocked'})`,
     () => tx({ type: 'ctlLift', kind: r.kind, value: r.value })
   ]), 'None');
 }
 
 function reqLink(name) {
-  if (tx({ type: 'linkReq', target: name })) toast('💬', `Request sent to ${name}`);
+  if (tx({ type: 'linkReq', target: name })) toast('💬', `DM request sent to ${name}`);
 }
 
 /* ---------- private threads, boards & spaces ---------- */
@@ -1421,7 +1492,7 @@ function addSpaceItem(code) {
   const right = el('span', 'sp-right');
   right.appendChild(el('span', 'cnt', '0'));
   const close = el('button', 'xbtn', '×');
-  close.title = 'Leave space';
+  close.title = 'Leave room';
   close.onclick = e => { e.stopPropagation(); leaveSpace(code); };
   right.appendChild(close);
   item.appendChild(right);
@@ -1432,7 +1503,7 @@ function addSpaceItem(code) {
 
 function requestSpace(rawCode, restore) {
   const code = normCode(rawCode);
-  if (code.length < 3) { toast('❌', 'Codes need 3-20 letters, numbers or dashes'); return; }
+  if (code.length < 3) { toast('❌', 'Room codes need 3-20 letters, numbers or dashes'); return; }
   if (!connected) { toast('⚠️', 'Not connected yet'); return; }
   tx({ type: 'enterSpace', code, restore: !!restore });
 }
@@ -1466,7 +1537,7 @@ async function copyInvite() {
   const link = inviteLink(code);
   try {
     await navigator.clipboard.writeText(link);
-    toast('🔗', 'Invite link copied. Others can also type the code: ' + code);
+    toast('🔗', 'Invite link copied. Friends can also type the code: ' + code);
   } catch {
     window.prompt('Copy this invite link:', link);
   }
@@ -1489,7 +1560,7 @@ function openBoard(b) {
   $('curBoard').classList.remove('private');
   $('curBoard').classList.toggle('space', sp);
   $('spTools').style.display = sp ? 'flex' : 'none';
-  $('fld').placeholder = sp ? `Add to space ${b.slice(6)}` : `Add to #${b} (try /help)`;
+  $('fld').placeholder = sp ? `Message room ${b.slice(6)}` : `Message #${b} (try /help)`;
   document.querySelectorAll('.item').forEach(c => c.classList.toggle('active', c.dataset.board === b));
   if (!feeds[b]) tx({ type: 'fetchLog', board: b }); else draw(true);
   unreadBoards[b] = 0;
@@ -1504,7 +1575,7 @@ function openLink(id, name) {
   viewType = 'link'; curLink = id;
   $('curBoard').textContent = name; $('curBoard').classList.add('private'); $('curBoard').classList.remove('space');
   $('spTools').style.display = 'none';
-  $('fld').placeholder = `Add to @${name}`;
+  $('fld').placeholder = `Message @${name}`;
   document.querySelectorAll('.item').forEach(c => c.classList.toggle('active', c.dataset.link === id));
   if (!linkFeeds[id]) tx({ type: 'fetchNoteLog', thread: id }); else draw(true);
   unreadLinks[id] = 0; updateLinkBadge(id); clearMark();
@@ -1513,17 +1584,19 @@ function openLink(id, name) {
 /* ---------- rendering ---------- */
 function draw(forceBottom) {
   const area = $('feedArea');
-  const list = viewType === 'link' ? (linkFeeds[curLink] || []) : (feeds[curBoard] || []);
+  const cutoff = Date.now() - TTL_MS;
+  const list = (viewType === 'link' ? (linkFeeds[curLink] || []) : (feeds[curBoard] || [])).filter(m => m.ts > cutoff);
   const nearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
   const oldTop = area.scrollTop;
+  const stick = !!forceBottom || nearBottom;
   area.replaceChildren();
-  if (!list.length) { area.appendChild(el('div', 'empty', 'Nothing here yet.')); return; }
+  if (!list.length) { area.appendChild(el('div', 'empty', 'No messages yet.')); return; }
 
   const byId = new Map(list.map(m => [m.id, m]));
   let prev = null;
   for (const m of list) {
     const grouped = prefs.messageGrouping && prev && prev.by === m.by && (m.ts - prev.ts) < 5 * 60 * 1000;
-    const row = el('div', 'row' + (grouped ? ' grouped' : ''));
+    const row = el('div', 'row' + (grouped ? ' grouped' : '') + (tappedId === m.id ? ' tapped' : ''));
 
     const ico = el('div', 'r-ico' + (m.color && m.color !== 'default' ? ` color-${m.color}` : ''), (m.by || 'U').charAt(0).toUpperCase());
     const body = el('div', 'r-body');
@@ -1537,7 +1610,7 @@ function draw(forceBottom) {
     if (target) {
       const ref = el('div', 'r-ref');
       ref.appendChild(el('span', 'r-ref-by', target.by));
-      const snippet = target.media && !target.body ? '[Attachment]' : cleanText(target.body || '').slice(0, 100);
+      const snippet = target.media && !target.body ? '[Image]' : cleanText(target.body || '').slice(0, 100);
       ref.appendChild(document.createTextNode(': ' + snippet));
       body.appendChild(ref);
     }
@@ -1546,6 +1619,7 @@ function draw(forceBottom) {
 
     if (m.media) {
       const img = el('img', 'r-media');
+      img.onload = () => { if (stick) area.scrollTop = area.scrollHeight; };
       img.src = m.media; img.alt = 'Attachment';
       img.onclick = () => { $('picModal').classList.add('show'); $('picModal').querySelector('img').src = m.media; };
       body.appendChild(img);
@@ -1566,10 +1640,10 @@ function draw(forceBottom) {
 
     const acts = el('div', 'r-acts');
     const refBtn = el('button', 'r-act', '↩');
-    refBtn.title = 'Reference';
+    refBtn.title = 'Reply';
     refBtn.onclick = () => {
       refTo = m;
-      $('refText').textContent = `Referencing ${m.by}`;
+      $('refText').textContent = `Replying to ${m.by}`;
       $('refBar').classList.add('show');
       $('fld').focus();
     };
@@ -1582,7 +1656,7 @@ function draw(forceBottom) {
     const mine = m.by === me;
     if (mine || (isStaff() && viewType === 'board')) {
       const del = el('button', 'r-act danger', '🗑');
-      del.title = 'Remove';
+      del.title = 'Delete message';
       del.onclick = () => {
         if (mine) {
           tx(viewType === 'link'
@@ -1601,6 +1675,7 @@ function draw(forceBottom) {
         const was = row.classList.contains('tapped');
         document.querySelectorAll('.row.tapped').forEach(x => x.classList.remove('tapped'));
         if (!was) row.classList.add('tapped');
+        tappedId = was ? null : m.id;
       };
     }
 
@@ -1680,45 +1755,13 @@ function submitEntry() {
   $('refText').textContent = '';
 }
 
-/* ---------- animation picker (search runs through the Worker, which holds the key) ---------- */
-let animTimer = null, animReq = 0;
-
-function closeAnim() { $('animPanel').classList.remove('show'); }
-
-async function loadAnims(q) {
-  const grid = $('animGrid'), mine = ++animReq;
-  grid.replaceChildren(el('div', 'empty', 'Loading...'));
-  try {
-    const r = await fetch(`${API_BASE}/api/m?q=${encodeURIComponent(q)}`);
-    const data = await r.json();
-    if (mine !== animReq) return;
-    if (!r.ok) throw new Error(data.error || 'Search failed');
-    if (!data.results.length) { grid.replaceChildren(el('div', 'empty', 'Nothing found')); return; }
-    grid.replaceChildren(...data.results.map(g => {
-      const img = el('img', 'anim-item');
-      img.src = g.preview; img.alt = g.title || 'Animation'; img.loading = 'lazy';
-      img.onclick = () => sendAnim(g.url);
-      return img;
-    }));
-  } catch (e) {
-    if (mine === animReq) grid.replaceChildren(el('div', 'empty', e.message));
-  }
-}
-
-function sendAnim(url) {
-  if (!connected) { toast('⚠️', 'Not connected yet'); return; }
-  selectedMedia = url;
-  submitEntry();
-  closeAnim();
-}
-
 /* ---------- audio (WebRTC mesh, signalling through the server) ---------- */
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
 function updateAvUI(b) {
   const C = cap(b);
   const list = avData[b] || [];
-  $('avStatus' + C).textContent = `${list.length} online`;
+  $('avStatus' + C).textContent = `${list.length} users`;
   const box = $('avPart' + C);
   box.replaceChildren(...list.map(u => el('div', 'av-part', u)));
   box.classList.toggle('show', list.length > 0);
@@ -1734,7 +1777,7 @@ function updateAllAvUI() { ['general', 'chill', 'gaming'].forEach(updateAvUI); }
 async function joinAv(b) {
   if (avBusy || curAv === b || !connected) return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    toast('❌', 'Audio needs a secure (https) page and a microphone.');
+    toast('❌', 'Voice chat needs a secure (https) page and a microphone.');
     return;
   }
   avBusy = true;
@@ -1901,23 +1944,54 @@ function joinSpaceFromInput() {
   if (!code.trim()) return;
   requestSpace(code, false);
   $('spCode').value = '';
+  $('spCode').blur();
 }
+// keep the keyboard/focus where it is so the first tap always lands
+['spJoin', 'spNew', 'goBtn'].forEach(id => $(id).addEventListener('pointerdown', e => e.preventDefault()));
 $('spJoin').onclick = joinSpaceFromInput;
 $('spCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinSpaceFromInput(); });
 $('spNew').onclick = () => requestSpace(randomCode(), false);
 $('spCopy').onclick = copyInvite;
 
 $('picBtn').onclick = () => $('picInput').click();
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error('Could not read that image'));
+    i.src = src;
+  });
+}
+
+// Any image is accepted: small ones are sent untouched, big ones are shrunk to fit.
+async function prepareImage(file) {
+  const original = await readFileAsDataURL(file);
+  if (original.length <= MAX_DATAURL_CHARS) return original;
+  const img = await loadImage(original);
+  let scale = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight));
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+    g.drawImage(img, 0, 0, w, h);
+    for (const q of [0.85, 0.7, 0.55, 0.4]) {
+      const out = c.toDataURL('image/jpeg', q);
+      if (out.length <= MAX_DATAURL_CHARS) return out;
+    }
+    scale *= 0.75;
+  }
+  throw new Error('Could not shrink that image enough');
+}
+
 $('picInput').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
-  if (file.size > MAX_MEDIA_BYTES) {
-    toast('❌', `File is too big (max ${Math.round(MAX_MEDIA_BYTES / 1024)} KB). For big animations use the GIF button.`);
-    clearMediaPreview();
-    return;
-  }
   try {
-    selectedMedia = await readFileAsDataURL(file);
+    selectedMedia = await prepareImage(file);
   } catch (err) {
     toast('❌', err.message);
     clearMediaPreview();
@@ -1929,19 +2003,6 @@ $('picInput').addEventListener('change', async e => {
   close.onclick = clearMediaPreview;
   preview.append(img, close);
   $('picPrev').replaceChildren(preview);
-});
-
-$('animBtn').onclick = e => {
-  e.stopPropagation();
-  const open = $('animPanel').classList.toggle('show');
-  if (open) { $('animSearch').value = ''; loadAnims(''); $('animSearch').focus(); }
-};
-$('animSearch').addEventListener('input', () => {
-  clearTimeout(animTimer);
-  animTimer = setTimeout(() => loadAnims($('animSearch').value.trim()), 400);
-});
-document.addEventListener('click', e => {
-  if (!$('animPanel').contains(e.target) && e.target !== $('animBtn')) closeAnim();
 });
 
 $('cancelRef').onclick = () => { refTo = null; $('refBar').classList.remove('show'); $('refText').textContent = ''; };
@@ -1966,7 +2027,7 @@ $('themeToggle').onclick = () => changePref(() => { prefs.lightTheme = !prefs.li
 $('enableBrowserNotif').onclick = async () => {
   if (Notification.permission === 'default') await requestAlertPerm();
   updateAlertStatus();
-  if (Notification.permission === 'granted') showBrowserAlert('The Chet', 'Alerts are working 🎉', true);
+  if (Notification.permission === 'granted') showBrowserAlert('The Chet', 'Notifications are working 🎉', true);
 };
 document.querySelectorAll('.color-option').forEach(o => {
   o.onclick = () => {
@@ -1989,6 +2050,7 @@ document.querySelectorAll('.cp-tab').forEach(tab => {
     document.querySelectorAll('.cp-tab').forEach(t => t.classList.toggle('active', t === tab));
     document.querySelectorAll('.cp-section').forEach(s => s.classList.toggle('active', s.dataset.section === tab.dataset.tab));
     if (tab.dataset.tab === 'bans') tx({ type: 'ctlList' });
+    if (tab.dataset.tab === 'owner') tx({ type: 'ctlAccounts' });
   };
 });
 
@@ -2002,7 +2064,7 @@ $('cAct').onchange = () => { $('cOpts').style.display = $('cAct').value === 'ban
 
 $('cRun').onclick = () => {
   const target = $('cUser').value;
-  if (!target) { toast('❌', 'Select a target first'); return; }
+  if (!target) { toast('❌', 'Select a user first'); return; }
   const duration = parseInt($('cDur').value, 10) || 60;
   const reason = $('cWhy').value.trim();
   const byAction = {
@@ -2018,7 +2080,7 @@ $('cRun').onclick = () => {
 document.querySelectorAll('.fx-btn[data-fx]').forEach(b => {
   b.onclick = () => {
     const target = $('fxUser').value;
-    if (!target) { toast('❌', 'Select a target first'); return; }
+    if (!target) { toast('❌', 'Select a user first'); return; }
     if (b.dataset.fx === 'forceDisconnect') tx({ type: 'ctlCut', target });
     else tx({ type: 'ctlFx', effect: b.dataset.fx, target });
   };
@@ -2034,7 +2096,44 @@ $('lstRefresh').onclick = () => tx({ type: 'ctlList' });
 $('paceApply').onclick = () => tx({ type: 'ctlPace', enabled: $('paceOn').checked, duration: parseInt($('paceDur').value, 10) || 5 });
 $('clrBtn').onclick = () => {
   const board = $('clrBoard').value;
-  if (confirm(`Clear everything in #${board}?`)) tx({ type: 'ctlClear', board });
+  if (confirm(`Delete all messages in #${board}?`)) tx({ type: 'ctlClear', board });
+};
+
+/* ---------- accounts: owner panel, login tabs, log out ---------- */
+function renderAccts() {
+  const q = $('acctSearch').value.trim().toLowerCase();
+  const rows = accounts.filter(a => !q || a.username.toLowerCase().includes(q));
+  const box = $('acctList');
+  if (!rows.length) { box.replaceChildren(el('div', 'empty', accounts.length ? 'No matches' : 'No accounts yet')); return; }
+  box.replaceChildren(...rows.map(a => {
+    const row = el('div', 'acct-row');
+    const nm = el('span', 'acct-name', a.username);
+    if (a.role) nm.appendChild(el('span', 'acct-role ' + a.role, a.role === 'admin' ? 'MOD' : a.role.toUpperCase()));
+    row.appendChild(nm);
+    if (a.role !== 'owner') {
+      const btns = el('div', 'acct-btns');
+      for (const [role, label] of [['vip', 'VIP'], ['admin', 'Mod'], ['none', 'None']]) {
+        const on = (a.role || 'none') === role;
+        const b = el('button', 'acct-btn' + (on ? ' on' : ''), label);
+        b.onclick = () => { if (!on) tx({ type: 'ctlSetRole', target: a.username, role }); };
+        btns.appendChild(b);
+      }
+      row.appendChild(btns);
+    }
+    return row;
+  }));
+}
+$('acctSearch').addEventListener('input', renderAccts);
+$('acctRefresh').onclick = () => tx({ type: 'ctlAccounts' });
+
+document.querySelectorAll('.login-tab').forEach(t => { t.onclick = () => setLoginTab(t.dataset.mode); });
+$('acctPwd').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+$('logoutBtn').onclick = () => {
+  tx({ type: 'logout' });
+  store.set('token', ''); store.set('username', '');
+  noReconnect = true;
+  setTimeout(() => location.reload(), 150);
 };
 
 /* ---------- startup ---------- */
@@ -2050,6 +2149,14 @@ window.addEventListener('load', () => {
 
   const saved = store.get('username');
   if (saved) $('usernameInput').value = saved;
+
+  setLoginTab('guest');
+  if (token && store.get('username')) {
+    me = store.get('username'); authMode = 'resume'; noReconnect = false;
+    $('loginError').textContent = 'Connecting...';
+    setLoginBusy(true);
+    connect();
+  }
 
   const params = new URLSearchParams(location.search);
   const invite = normCode(params.get('s'));
