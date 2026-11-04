@@ -12,6 +12,13 @@
       { "name": "HUB", "class_name": "Hub" }
     ]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "chet-accounts",
+      "database_id": "a8c3b65f-e97f-4d0e-b856-5808002a0f34"
+    }
+  ],
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["ChatRoom"] },
     { "tag": "v2", "renamed_classes": [{ "from": "ChatRoom", "to": "Hub" }] }
