@@ -200,12 +200,12 @@ body.light-theme .me-name{color:#060607}
 @keyframes glow{0%,100%{text-shadow:0 0 20px rgba(88,101,242,.5),0 0 40px rgba(88,101,242,.3)}50%{text-shadow:0 0 30px rgba(88,101,242,.7),0 0 60px rgba(88,101,242,.5)}}
 #loginCard{width:320px;max-width:calc(100vw - 32px);background:#2f3136;border:1px solid #202225;border-radius:8px;padding:24px;color:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 #loginCard h2{margin-bottom:16px;font-size:20px}
-#usernameInput,#pwdInput{width:100%;padding:12px;border-radius:6px;border:none;background:#40444b;color:#fff;font-size:14px;transition:box-shadow .2s;margin-bottom:12px}
-#usernameInput:focus,#pwdInput:focus{outline:none;box-shadow:0 0 0 2px #5865f2}
+#usernameInput,#acctPwd{width:100%;padding:12px;border-radius:6px;border:none;background:#40444b;color:#fff;font-size:14px;transition:box-shadow .2s;margin-bottom:12px}
+#usernameInput:focus,#acctPwd:focus{outline:none;box-shadow:0 0 0 2px #5865f2}
 #loginBtn{width:100%;margin-top:0;padding:12px;border:none;border-radius:6px;background:#5865f2;color:#fff;cursor:pointer;font-weight:600;font-size:14px;transition:background .2s}
 #loginBtn:disabled{opacity:.6;cursor:wait}
 .alt-login{margin-top:16px;color:#5865f2;font-size:13px;cursor:pointer;transition:all .2s;text-decoration:underline;text-underline-offset:2px}
-#loginError{margin-top:10px;color:#ed4245;font-size:13px;min-height:20px}
+#loginError{margin-top:10px;color:#ed4245;font-size:13px;min-height:0}#loginError:empty{display:none}
 .empty{text-align:center;color:#72767d;padding:12px;font-size:12px}
 .modal-overlay{position:fixed;inset:0;z-index:1500;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center}
 .modal-overlay.show{display:flex}
@@ -338,8 +338,14 @@ body.light-theme .row:hover{background:rgba(0,0,0,.05)}
 @media (hover:none){.row.tapped .r-acts{display:flex}}
 button,.item,.av-item,.mem,.r-act,.mark,.sp-btn,.go,.ibtn,.cp-tab,.color-option,.settings-toggle,.alt-login{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .r-media{min-height:40px}
-.login-tabs{display:flex;gap:6px;margin-bottom:14px}
-.login-tab{flex:1;padding:8px 4px;border:none;border-radius:6px;background:#40444b;color:#96989d;font-size:13px;font-weight:600;cursor:pointer}
+.login-tabs{display:flex;gap:6px}
+.login-or{color:#72767d;font-size:12px;margin:2px 0 10px}
+.pwd-wrap{position:relative}
+.pwd-wrap #acctPwd{padding-right:64px}
+.pwd-eye{position:absolute;right:6px;top:6px;height:32px;padding:0 10px;border:none;border-radius:4px;background:#4f545c;color:#dcddde;font-size:12px;font-weight:600;cursor:pointer}
+.pwd-eye:active{background:#5d6269}
+#acctPwd::-ms-reveal,#acctPwd::-ms-clear{display:none}
+.login-tab{flex:1;padding:9px 4px;border:none;border-radius:6px;background:#40444b;color:#96989d;font-size:13px;font-weight:600;cursor:pointer}
 .login-tab.active{background:#5865f2;color:#fff}
 .acct-row{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;background:#40444b;border-radius:6px;margin-bottom:6px}
 .acct-name{color:#fff;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
@@ -349,7 +355,7 @@ button,.item,.av-item,.mem,.r-act,.mark,.sp-btn,.go,.ibtn,.cp-tab,.color-option,
 .acct-btn{padding:5px 8px;border:none;border-radius:3px;cursor:pointer;font-size:10px;font-weight:600;color:#fff;background:#4f545c}
 .acct-btn.on{background:#5865f2}
 body.light-theme .acct-row{background:#ebedef}body.light-theme .acct-name{color:#2e3338}
-body.light-theme .login-tab{background:#ebedef}body.light-theme .login-tab.active{background:#5865f2;color:#fff}
+body.light-theme .login-tab{background:#ebedef}body.light-theme .pwd-eye{background:#d4d7dc;color:#2e3338}body.light-theme .login-tab.active{background:#5865f2;color:#fff}
 @media (max-width:768px){
   body,.shell{height:100vh;height:100dvh}
   .side{position:fixed;top:0;bottom:0;left:0;width:82vw;max-width:300px;z-index:1200;transform:translateX(-100%);transition:transform .25s}
@@ -379,7 +385,7 @@ body.light-theme .login-tab{background:#ebedef}body.light-theme .login-tab.activ
 
   .compose{padding:0 8px calc(8px + env(safe-area-inset-bottom))}
   .box{padding:8px}
-  .fld,#usernameInput,#pwdInput,.sp-in,.form-input,.form-select{font-size:16px}
+  .fld,#usernameInput,#acctPwd,.sp-in,.form-input,.form-select{font-size:16px}
 
   .item,.av-item{padding:12px}
   .mem{padding:10px 12px}
@@ -406,22 +412,20 @@ body.light-theme .login-tab{background:#ebedef}body.light-theme .login-tab.activ
 <div class="login-title">The Chet</div>
 <div id="loginCard">
 <h2>Welcome to The Chet</h2>
-<div class="login-tabs">
-<button class="login-tab active" data-mode="guest">Guest</button>
-<button class="login-tab" data-mode="login">Log in</button>
-<button class="login-tab" data-mode="signup">Sign up</button>
-</div>
-<div id="loginHint" style="color:#96989d;font-size:12px;margin:-4px 0 10px;min-height:16px"></div>
+<div id="loginHint" style="color:#96989d;font-size:12px;margin:-4px 0 12px;min-height:16px"></div>
 <input type="text" id="usernameInput" placeholder="Username" maxlength="30" autocomplete="username">
-<div id="acctField" style="display:none">
+<div id="acctField" class="pwd-wrap">
 <input type="password" id="acctPwd" placeholder="Password" maxlength="128" autocomplete="current-password">
+<button type="button" class="pwd-eye" id="pwdEye" aria-label="Show password">Show</button>
 </div>
-<div id="adminField" style="display:none">
-<input type="password" id="pwdInput" placeholder="Admin / VIP password" autocomplete="off">
-</div>
-<button id="loginBtn">Join as guest</button>
-<div class="alt-login" id="adminToggle">Admin login</div>
+<button id="loginBtn">Log in</button>
 <div id="loginError"></div>
+<div class="login-or">or</div>
+<div class="login-tabs">
+<button class="login-tab" data-mode="guest">Guest</button>
+<button class="login-tab" data-mode="signup">Sign up</button>
+<button class="login-tab active" data-mode="login">Log in</button>
+</div>
 </div>
 </div>
 
@@ -854,7 +858,7 @@ function socketUrl() {
 
 /* ---------- state ---------- */
 let ws = null, connected = false, joinedOnce = false, noReconnect = false, reconnectNotified = false, reconnectTimer = null;
-let me = '', loginKey = '', uuid = store.get('uuid') || null;
+let me = '', uuid = store.get('uuid') || null;
 let token = store.get('token') || null, authMode = 'guest', loginTab = 'guest', acctPassword = '', isAccount = false;
 let accounts = [], tappedId = null;
 let isAdmin = false, isVIP = false, isOwner = false;
@@ -1082,8 +1086,7 @@ function connect() {
       type: 'open', name: me, mode: authMode,
       uuid: authMode === 'guest' ? (uuid || undefined) : undefined,
       password: acctPassword || undefined,
-      token: authMode === 'resume' ? token : undefined,
-      key: loginKey || undefined
+      token: authMode === 'resume' ? token : undefined
     });
   };
   sock.onmessage = e => {
@@ -1112,13 +1115,6 @@ function connect() {
 }
 
 /* ---------- entry flow: Join -> guidelines popup -> connect ---------- */
-const adminFieldShown = () => $('adminField').style.display !== 'none';
-function showAdminField(show) {
-  $('adminField').style.display = show ? 'block' : 'none';
-  $('adminToggle').textContent = show ? 'Cancel admin login' : 'Admin login';
-  if (show) $('pwdInput').focus(); else $('pwdInput').value = '';
-}
-
 function setLoginTab(mode) {
   loginTab = mode;
   document.querySelectorAll('.login-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
@@ -1147,7 +1143,6 @@ function cancelRules() { $('rulesModal').classList.remove('show'); }
 function acceptRules() {
   $('rulesModal').classList.remove('show');
   me = $('usernameInput').value.trim() || 'Guest';
-  loginKey = adminFieldShown() ? $('pwdInput').value : '';
   authMode = loginTab;
   acctPassword = loginTab === 'guest' ? '' : $('acctPwd').value;
   noReconnect = false;
@@ -1165,7 +1160,6 @@ function failLogin(message) {
   setLoginBusy(false);
   $('loginOverlay').style.display = 'flex';
   $('loginError').textContent = message;
-  if (loginKey) showAdminField(true);
   startParticles();
 }
 
@@ -1899,8 +1893,14 @@ function openDrawer(selector) {
 
 /* ---------- UI wiring ---------- */
 $('loginBtn').onclick = login;
-$('adminToggle').onclick = () => showAdminField(!adminFieldShown());
-['usernameInput', 'pwdInput'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') login(); }));
+$('usernameInput').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+$('pwdEye').onclick = () => {
+  const show = $('acctPwd').type === 'password';
+  $('acctPwd').type = show ? 'text' : 'password';
+  $('pwdEye').textContent = show ? 'Hide' : 'Show';
+  $('pwdEye').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+};
+$('pwdEye').addEventListener('pointerdown', e => e.preventDefault());
 
 $('rulesList').replaceChildren(...RULES.map(([title, text], i) => {
   const box = el('div', 'rule');
@@ -2150,7 +2150,7 @@ window.addEventListener('load', () => {
   const saved = store.get('username');
   if (saved) $('usernameInput').value = saved;
 
-  setLoginTab('guest');
+  setLoginTab('login');
   if (token && store.get('username')) {
     me = store.get('username'); authMode = 'resume'; noReconnect = false;
     $('loginError').textContent = 'Connecting...';
@@ -2162,6 +2162,7 @@ window.addEventListener('load', () => {
   const invite = normCode(params.get('s'));
   if (invite.length >= 3) pendingInvite = invite;
   if (params.get('guest') === 'true') {
+    setLoginTab('guest');
     $('usernameInput').value = 'Guest';
     login();
   }
