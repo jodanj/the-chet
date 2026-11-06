@@ -420,6 +420,10 @@ export class Hub {
       case 'avOn': return this.onAvOn(ws, data, user);
       case 'avOff': return this.avOff(ws, user);
       case 'logout': return this.onLogout(user);
+      case 'getProfile': return this.onGetProfile(ws, data, user);
+      case 'setBio': return this.onSetBio(ws, data, user);
+      case 'changePassword': return this.onChangePassword(ws, data, user);
+      case 'deleteAccount': return this.onDeleteAccount(ws, data, user);
       case 'avOffer': return this.relayAv(user, data, 'avOffer', 'offer');
       case 'avAnswer': return this.relayAv(user, data, 'avAnswer', 'answer');
       case 'avCand': return this.relayAv(user, data, 'avCand', 'candidate');
@@ -434,6 +438,8 @@ export class Hub {
       case 'ctlNotice': return this.onCtlNotice(ws, data, user);
       case 'ctlDrop': return this.onCtlDrop(ws, data, user);
       case 'ctlList': return this.onCtlList(ws);
+      case 'ctlBanAccount': return this.onCtlBanAccount(ws, data, user);
+      case 'ctlDeleteAccount': return this.onCtlDeleteAccount(ws, data, user);
       case 'ctlAnnounce': return this.onCtlAnnounce(ws, data);
       case 'ctlPace': return this.onCtlPace(ws, data);
       case 'ctlClear': return this.onCtlClear(ws, data);
@@ -457,22 +463,30 @@ export class Hub {
   ensureSchema() {
     if (!this.schemaReady) {
       const db = this.env.DB;
-      this.schemaReady = db.batch([
-        db.prepare('CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, username TEXT NOT NULL, username_lc TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, hash TEXT NOT NULL, role TEXT, created INTEGER NOT NULL)'),
-        db.prepare('CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, account_id TEXT NOT NULL, created INTEGER NOT NULL)'),
-        db.prepare('CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id)')
-      ]).catch((err) => { this.schemaReady = null; throw err; });
+      this.schemaReady = (async () => {
+        await db.batch([
+          db.prepare('CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, username TEXT NOT NULL, username_lc TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, hash TEXT NOT NULL, role TEXT, created INTEGER NOT NULL, bio TEXT, banned INTEGER NOT NULL DEFAULT 0, ban_reason TEXT)'),
+          db.prepare('CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, account_id TEXT NOT NULL, created INTEGER NOT NULL)'),
+          db.prepare('CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id)')
+        ]);
+        // Databases created by the previous version are upgraded in place.
+        const { results } = await db.prepare('PRAGMA table_info(accounts)').all();
+        const have = new Set((results || []).map((c) => c.name));
+        for (const [col, def] of [['bio', 'TEXT'], ['banned', 'INTEGER NOT NULL DEFAULT 0'], ['ban_reason', 'TEXT']]) {
+          if (!have.has(col)) await db.prepare(`ALTER TABLE accounts ADD COLUMN ${col} ${def}`).run();
+        }
+      })().catch((err) => { this.schemaReady = null; throw err; });
     }
     return this.schemaReady;
   }
 
   accountByName(name) {
-    return this.env.DB.prepare('SELECT id, username, role, salt, hash FROM accounts WHERE username_lc = ?').bind(lc(name)).first();
+    return this.env.DB.prepare('SELECT id, username, role, salt, hash, banned, ban_reason FROM accounts WHERE username_lc = ?').bind(lc(name)).first();
   }
 
   accountByToken(tokenHash) {
     return this.env.DB.prepare(
-      'SELECT a.id, a.username, a.role FROM sessions s JOIN accounts a ON a.id = s.account_id WHERE s.token_hash = ? AND s.created > ?'
+      'SELECT a.id, a.username, a.role, a.banned, a.ban_reason FROM sessions s JOIN accounts a ON a.id = s.account_id WHERE s.token_hash = ? AND s.created > ?'
     ).bind(tokenHash, Date.now() - SESSION_TTL_MS).first();
   }
 
@@ -553,6 +567,9 @@ export class Hub {
         if (await this.accountByName(name)) return this.reject(ws, 'denied', 'That username is taken');
       }
       if (account) name = account.username;
+      if (account && account.banned) {
+        return this.reject(ws, 'denied', 'This account is banned' + (account.ban_reason ? ': ' + account.ban_reason : ''));
+      }
     }
     if (!name) return this.reject(ws, 'denied', 'Choose a username');
 
@@ -1106,6 +1123,9 @@ export class Hub {
   onCtlBar(ws, data, admin) {
     const name = cleanName(data.target);
     if (!name) return;
+    if (data.banType === 'account') {
+      return this.onCtlBanAccount(ws, { target: name, banned: true, reason: data.reason }, admin);
+    }
     const banType = ['username', 'ip', 'both'].includes(data.banType) ? data.banType : 'ip';
     const mode = BAR_MODES.includes(data.mode) ? data.mode : 'full';
     const barName = banType !== 'ip';
@@ -1196,12 +1216,21 @@ export class Hub {
     this.ok(ws, 'Message deleted');
   }
 
-  onCtlList(ws) {
+  async onCtlList(ws) {
     const restricted = [
       ...[...this.limitedNames].map(([value, mode]) => ({ kind: 'user', value, mode })),
       ...[...this.limitedIPs].map(([value, mode]) => ({ kind: 'ip', value, mode }))
     ];
-    send(ws, { type: 'barList', names: [...this.barredNames], ips: [...this.barredIPs], restricted });
+    let accounts;   // only owners see banned accounts
+    const me = ws.deserializeAttachment();
+    if (me && me.isOwner && this.env.DB) {
+      try {
+        await this.ensureSchema();
+        const { results } = await this.env.DB.prepare('SELECT username FROM accounts WHERE banned = 1 ORDER BY username_lc').all();
+        accounts = (results || []).map((r) => r.username);
+      } catch (err) { console.error('ban list failed:', err); }
+    }
+    send(ws, { type: 'barList', names: [...this.barredNames], ips: [...this.barredIPs], restricted, accounts });
   }
 
   onCtlAnnounce(ws, data) {
@@ -1253,7 +1282,7 @@ export class Hub {
     if (!user.isOwner) return;
     if (!this.env.DB) { send(ws, { type: 'fault', message: 'Accounts are not set up on this server yet' }); return; }
     await this.ensureSchema();
-    const { results } = await this.env.DB.prepare('SELECT username, role FROM accounts ORDER BY username_lc LIMIT 1000').all();
+    const { results } = await this.env.DB.prepare('SELECT username, role, banned, created FROM accounts ORDER BY username_lc LIMIT 1000').all();
     send(ws, { type: 'acctList', accounts: results || [] });
   }
 
@@ -1277,6 +1306,151 @@ export class Hub {
       this.broadcast({ type: 'roster', members: this.getRoster() });
     }
     this.ok(ws, `${acct.username} is now ${label}`);
+    await this.onCtlAccounts(ws, user);
+  }
+
+  // Owner: ban or unban a whole account (it can no longer log in, on any device or address).
+  async onCtlBanAccount(ws, data, user) {
+    if (!user.isOwner) { send(ws, { type: 'fault', message: 'Only owners can ban accounts' }); return; }
+    if (!this.env.DB) return;
+    await this.ensureSchema();
+    const acct = await this.accountByName(cleanName(data.target));
+    if (!acct) { send(ws, { type: 'fault', message: 'No account with that username' }); return; }
+    if (acct.role === 'owner') { send(ws, { type: 'fault', message: 'Owner accounts cannot be banned' }); return; }
+
+    const banned = data.banned !== false;
+    const reason = cleanReason(data.reason);
+    await this.env.DB.prepare('UPDATE accounts SET banned = ?, ban_reason = ? WHERE id = ?')
+      .bind(banned ? 1 : 0, banned && reason ? reason : null, acct.id).run();
+
+    if (banned) {
+      await this.env.DB.prepare('DELETE FROM sessions WHERE account_id = ?').bind(acct.id).run();
+      const t = this.findMember(acct.username);
+      if (t && t.user.acct) {
+        send(t.ws, { type: 'banned', message: `Your account has been banned${reason ? ': ' + reason : ''}` });
+        try { t.ws.close(4003, 'banned'); } catch { /* ignore */ }
+      }
+    }
+    this.ok(ws, banned ? `Banned account ${acct.username}` : `Unbanned account ${acct.username}`);
+    await this.onCtlAccounts(ws, user);
+    await this.onCtlList(ws);
+  }
+
+  // ----- profiles -----
+
+  async onGetProfile(ws, data, user) {
+    const name = cleanName(data.name);
+    if (!name) return;
+    const online = this.findMember(name);
+    let acct = null;
+    if (this.env.DB) {
+      await this.ensureSchema();
+      acct = await this.env.DB.prepare('SELECT username, role, created, bio, banned FROM accounts WHERE username_lc = ?').bind(lc(name)).first();
+    }
+    if (!acct && !online) { send(ws, { type: 'fault', message: 'User not found' }); return; }
+    const username = acct ? acct.username : online.user.name;
+    const out = {
+      type: 'profile',
+      name: username,
+      account: !!acct,
+      role: acct ? acct.role || null : null,
+      created: acct ? acct.created : null,
+      bio: acct && acct.bio ? acct.bio : '',
+      color: this.profiles.get(lc(username))?.color || 'default',
+      online: !!online,
+      self: lc(username) === lc(user.name)
+    };
+    if (user.isOwner && acct) out.banned = !!acct.banned;
+    send(ws, out);
+  }
+
+  async onSetBio(ws, data, user) {
+    if (!user.acct || !this.env.DB) return;
+    const bio = typeof data.bio === 'string'
+      ? data.bio.replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) : '';
+    await this.ensureSchema();
+    await this.env.DB.prepare('UPDATE accounts SET bio = ? WHERE id = ?').bind(bio || null, user.uuid).run();
+    this.ok(ws, 'Profile saved');
+    await this.onGetProfile(ws, { name: user.name }, user);
+  }
+
+  // Checks the signed-in account's password (with the same guessing limits as logging in).
+  async confirmPassword(ws, user, password) {
+    if (!user.acct || !this.env.DB) return null;
+    if (this.authBlocked(user.ip)) { send(ws, { type: 'fault', message: 'Too many attempts. Try again in a few minutes.' }); return null; }
+    await this.ensureSchema();
+    const acct = await this.accountByName(user.name);
+    if (!acct || !(await verifyPassword(typeof password === 'string' ? password : '', acct))) {
+      this.authFail(user.ip);
+      send(ws, { type: 'fault', message: 'Wrong password' });
+      return null;
+    }
+    return acct;
+  }
+
+  async onChangePassword(ws, data, user) {
+    const newPw = typeof data.newPassword === 'string' ? data.newPassword : '';
+    if (newPw.length < 6 || newPw.length > 128) { send(ws, { type: 'fault', message: 'New password must be 6-128 characters' }); return; }
+    const acct = await this.confirmPassword(ws, user, data.password);
+    if (!acct) return;
+    const salt = randomHex(16);
+    const hash = await hashPassword(newPw, salt);
+    const db = this.env.DB;
+    await db.prepare('UPDATE accounts SET salt = ?, hash = ? WHERE id = ?').bind(salt, hash, acct.id).run();
+    // Log out every other device.
+    await db.prepare('DELETE FROM sessions WHERE account_id = ? AND token_hash != ?').bind(acct.id, user.th || '').run();
+    this.ok(ws, 'Password changed. Other devices were logged out.');
+  }
+
+  // Removes an account, its sessions and its DMs, and disconnects it if it is online.
+  async deleteAccountData(acct, message) {
+    const db = this.env.DB;
+    await db.batch([
+      db.prepare('DELETE FROM sessions WHERE account_id = ?').bind(acct.id),
+      db.prepare('DELETE FROM accounts WHERE id = ?').bind(acct.id)
+    ]);
+
+    const keys = [];
+    for (const [thread, parts] of [...this.linkMembers]) {
+      if (!parts.some((p) => p.uuid === acct.id)) continue;
+      for (const m of this.links.get(thread) || []) keys.push(tKey(m));
+      this.links.delete(thread);
+      this.linkMembers.delete(thread);
+      this.sendToUuids(parts.filter((p) => p.uuid !== acct.id).map((p) => p.uuid), { type: 'linkGone', thread });
+    }
+    for (let i = 0; i < keys.length; i += 128) await this.ctx.storage.delete(keys.slice(i, i + 128));
+
+    this.hidden.delete(acct.id);
+    for (const m of this.hidden.values()) m.delete(acct.id);
+    this.profiles.delete(lc(acct.username));
+    this.notices.delete(lc(acct.username));
+    this.saveMeta();
+
+    for (const [ws, u] of this.joinedSockets()) {
+      if (u.uuid !== acct.id) continue;
+      send(ws, { type: 'accountDeleted', message });
+      ws.serializeAttachment({ ip: u.ip });
+      try { ws.close(4005, 'account deleted'); } catch { /* ignore */ }
+    }
+    this.broadcast({ type: 'roster', members: this.getRoster() });
+  }
+
+  // You can delete your own account after confirming your password.
+  async onDeleteAccount(ws, data, user) {
+    const acct = await this.confirmPassword(ws, user, data.password);
+    if (!acct) return;
+    await this.deleteAccountData(acct, 'Your account was deleted');
+  }
+
+  // Owners can delete other accounts (not other owners).
+  async onCtlDeleteAccount(ws, data, user) {
+    if (!user.isOwner || !this.env.DB) return;
+    await this.ensureSchema();
+    const acct = await this.accountByName(cleanName(data.target));
+    if (!acct) { send(ws, { type: 'fault', message: 'No account with that username' }); return; }
+    if (acct.role === 'owner') { send(ws, { type: 'fault', message: 'Owner accounts can only be deleted by their own owner' }); return; }
+    await this.deleteAccountData(acct, 'Your account was deleted by an owner');
+    this.ok(ws, `Deleted account ${acct.username}`);
     await this.onCtlAccounts(ws, user);
   }
 }
