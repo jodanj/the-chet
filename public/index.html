@@ -356,6 +356,32 @@ button,.item,.av-item,.mem,.r-act,.mark,.sp-btn,.go,.ibtn,.cp-tab,.color-option,
 .acct-btn.on{background:#5865f2}
 body.light-theme .acct-row{background:#ebedef}body.light-theme .acct-name{color:#2e3338}
 body.light-theme .login-tab{background:#ebedef}body.light-theme .pwd-eye{background:#d4d7dc;color:#2e3338}body.light-theme .login-tab.active{background:#5865f2;color:#fff}
+.pf-head{display:flex;gap:14px;align-items:center;margin-bottom:14px}
+.pf-avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:26px;flex-shrink:0}
+.pf-avatar.color-red{background:linear-gradient(135deg,#ff6b6b,#ee5a6f)}
+.pf-avatar.color-orange{background:linear-gradient(135deg,#ffa500,#ff8c00)}
+.pf-avatar.color-yellow{background:linear-gradient(135deg,#ffd93d,#fcbf49)}
+.pf-avatar.color-green{background:linear-gradient(135deg,#51cf66,#37b24d)}
+.pf-avatar.color-blue{background:linear-gradient(135deg,#4dabf7,#3b5bdb)}
+.pf-avatar.color-purple{background:linear-gradient(135deg,#9775fa,#7950f2)}
+.pf-avatar.color-pink{background:linear-gradient(135deg,#ff6ec7,#f783ac)}
+.pf-info{min-width:0}
+.pf-name{color:#fff;font-size:20px;font-weight:700;word-break:break-word}
+.pf-sub{color:#96989d;font-size:12px;margin-top:3px;line-height:1.4}
+.pf-section{background:#40444b;border-radius:8px;padding:12px;margin-bottom:10px}
+.pf-title{color:#96989d;font-size:11px;font-weight:700;text-transform:uppercase;margin-bottom:8px}
+.pf-bio{color:#dcddde;font-size:14px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word}
+.pf-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pf-actions .btn{flex:1;min-width:120px;margin-top:0}
+.pf-section .form-input{background:#2f3136}
+.pf-section .color-picker{margin-top:0}
+.me-name,#myAvatar,.r-by,.mem-name{cursor:pointer}
+.acct-row{flex-wrap:wrap}
+.acct-btns{flex-wrap:wrap;margin-left:auto}
+.acct-btn.warn{background:#faa61a}
+.acct-btn.danger{background:#ed4245}
+body.light-theme .pf-section{background:#ebedef}body.light-theme .pf-section .form-input{background:#fff}
+body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 @media (max-width:768px){
   body,.shell{height:100vh;height:100dvh}
   .side{position:fixed;top:0;bottom:0;left:0;width:82vw;max-width:300px;z-index:1200;transform:translateX(-100%);transition:transform .25s}
@@ -458,6 +484,16 @@ body.light-theme .login-tab{background:#ebedef}body.light-theme .pwd-eye{backgro
 </div>
 </div>
 
+<div class="modal-overlay" id="profileModal">
+<div class="modal">
+<div class="modal-header">
+<div class="modal-title" id="pfTitle">Profile</div>
+<button class="modal-close" id="closeProfile">×</button>
+</div>
+<div class="modal-body" id="pfBody"></div>
+</div>
+</div>
+
 <div class="pic-modal" id="picModal">
 <img src="" alt="Full size">
 </div>
@@ -511,7 +547,7 @@ body.light-theme .login-tab{background:#ebedef}body.light-theme .pwd-eye{backgro
 <div class="settings-option">
 <div>
 <div class="settings-option-label" id="acctLabel">Guest</div>
-<div class="settings-option-desc">Messages are deleted after 3 days</div>
+<div class="settings-option-desc">Tap your name (bottom left) to open your profile. Messages are deleted after 3 days.</div>
 </div>
 <button class="toast-btn toast-decline" id="logoutBtn" style="flex:none;padding:6px 12px">Log out</button>
 </div>
@@ -616,6 +652,7 @@ body.light-theme .login-tab{background:#ebedef}body.light-theme .pwd-eye{backgro
 <button class="ct-btn" data-type="username">Username Only</button>
 <button class="ct-btn selected" data-type="ip">IP Only</button>
 <button class="ct-btn" data-type="both">Both</button>
+<button class="ct-btn" data-type="account" id="ctAccount" style="display:none">Account</button>
 </div>
 </div>
 <button class="btn btn-primary" id="cRun">Execute Action</button>
@@ -650,6 +687,10 @@ body.light-theme .login-tab{background:#ebedef}body.light-theme .pwd-eye{backgro
 <div class="lst" id="lstNames"></div>
 <div class="form-label">Banned IP Addresses</div>
 <div class="lst" id="lstIps"></div>
+<div id="lstAcctWrap" style="display:none">
+<div class="form-label">Banned Accounts</div>
+<div class="lst" id="lstAccts"></div>
+</div>
 <div class="form-label">Muted / Chat-blocked</div>
 <div class="lst" id="lstLim"></div>
 <button class="btn btn-primary" id="lstRefresh">🔄 Refresh Lists</button>
@@ -820,7 +861,7 @@ gaming
    ============================================================ */
 
 const EMOJIS = ['👍','👎','❤️','😂','😮','😢','🔥','🎉','👀','💯'];
-const WS_FALLBACK = 'wss://chet.jplevandoski.workers.dev/s';
+const WS_FALLBACK = 'wss://the-chet.app/s';
 const MAX_DATAURL_CHARS = 900000;            // images bigger than this are shrunk automatically
 const TTL_MS = 3 * 24 * 60 * 60 * 1000;      // the server deletes messages after 3 days
 const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -1187,6 +1228,7 @@ function handle(d) {
       $('connStatus').classList.add('online');
       $('goBtn').disabled = false;
       $('ownerTab').style.display = isOwner ? 'block' : 'none';
+      $('ctAccount').style.display = isOwner ? '' : 'none';
       $('ctlBtn').style.display = isStaff() ? 'flex' : 'none';
       $('myName').textContent = me;
       $('myInitial').textContent = me.charAt(0).toUpperCase();
@@ -1207,11 +1249,26 @@ function handle(d) {
     role: () => {
       isOwner = !!d.isOwner; isAdmin = !!d.isAdmin; isVIP = !!d.isVIP;
       $('ownerTab').style.display = isOwner ? 'block' : 'none';
+      $('ctAccount').style.display = isOwner ? '' : 'none';
       $('ctlBtn').style.display = isStaff() ? 'flex' : 'none';
       toast('🛡️', d.message || 'Your role changed');
       draw();
     },
     acctList: () => { accounts = d.accounts || []; renderAccts(); },
+    profile: () => { if ($('profileModal').classList.contains('show')) renderProfile(d); },
+    accountDeleted: () => {
+      noReconnect = true;
+      store.set('token', ''); store.set('username', '');
+      alert(d.message || 'Your account was deleted');
+      location.reload();
+    },
+    linkGone: () => {
+      const it = linkItem(d.thread);
+      if (it) it.remove();
+      delete linkPeers[d.thread]; delete linkFeeds[d.thread]; delete unreadLinks[d.thread];
+      if (curLink === d.thread) openBoard('general');
+      toast('💬', 'A DM was removed because the other account was deleted');
+    },
     linkList: () => d.links.forEach(c => { linkPeers[c.thread] = c.with; addLink(c.thread, c.with); }),
     hiddenList: () => { hiddenNames = new Set(d.members.map(n => n.toLowerCase())); updMembers(); },
 
@@ -1381,7 +1438,10 @@ function updateLinkBadge(thread) {
 function makeMemberItem(u) {
   const row = el('div', 'mem');
   const role = u.isOwner ? 'owner' : u.isAdmin ? 'admin' : u.isVIP ? 'vip' : '';
-  row.appendChild(el('span', 'mem-name' + (role ? ' ' + role : ''), u.name + (u.name === me ? ' (you)' : '')));
+  const nameEl = el('span', 'mem-name' + (role ? ' ' + role : ''), u.name + (u.name === me ? ' (you)' : ''));
+  nameEl.title = 'View profile';
+  nameEl.onclick = () => openProfile(u.name);
+  row.appendChild(nameEl);
   if (u.name !== me) {
     const actions = el('span', 'mem-actions');
     const lk = el('button', 'mem-btn', 'DM');
@@ -1445,6 +1505,8 @@ function renderLists(d) {
     }));
   };
   fill($('lstNames'), d.names.map(u => [u, () => tx({ type: 'ctlUnbar', name: u })]), 'None');
+  $('lstAcctWrap').style.display = d.accounts ? '' : 'none';
+  if (d.accounts) fill($('lstAccts'), d.accounts.map(u => [u, () => tx({ type: 'ctlBanAccount', target: u, banned: false })]), 'None');
   fill($('lstIps'), d.ips.map(ip => [ip, () => tx({ type: 'ctlUnbarIp', ip })]), 'None');
   fill($('lstLim'), (d.restricted || []).map(r => [
     `${r.value} (${r.kind}, ${r.mode === 'mute' ? 'muted' : 'chat-blocked'})`,
@@ -1596,7 +1658,9 @@ function draw(forceBottom) {
     const body = el('div', 'r-body');
 
     const head = el('div', 'r-head');
-    head.appendChild(el('span', 'r-by ' + (m.role || 'normal'), m.by));
+    const by = el('span', 'r-by ' + (m.role || 'normal'), m.by);
+    by.onclick = () => openProfile(m.by);
+    head.appendChild(by);
     head.appendChild(el('span', 'r-t', new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })));
     body.appendChild(head);
 
@@ -1665,7 +1729,7 @@ function draw(forceBottom) {
 
     if (window.matchMedia('(hover: none)').matches) {
       row.onclick = e => {
-        if (e.target.closest('.r-acts, .mark, .r-media, .picker')) return;
+        if (e.target.closest('.r-acts, .mark, .r-media, .picker, .r-by')) return;
         const was = row.classList.contains('tapped');
         document.querySelectorAll('.row.tapped').forEach(x => x.classList.remove('tapped'));
         if (!was) row.classList.add('tapped');
@@ -2100,6 +2164,25 @@ $('clrBtn').onclick = () => {
 };
 
 /* ---------- accounts: owner panel, login tabs, log out ---------- */
+function ownerBanAccount(name, ban) {
+  if (ban) {
+    const reason = prompt(`Reason for banning the account "${name}" (optional):`);
+    if (reason === null) return;
+    tx({ type: 'ctlBanAccount', target: name, banned: true, reason: reason.trim() });
+  } else {
+    tx({ type: 'ctlBanAccount', target: name, banned: false });
+  }
+  setTimeout(() => { if ($('profileModal').classList.contains('show')) tx({ type: 'getProfile', name }); }, 500);
+}
+
+function ownerDeleteAccount(name) {
+  const typed = prompt(`This permanently deletes the account "${name}" and its DMs.\nType the username to confirm:`);
+  if (typed === null) return;
+  if (typed.trim().toLowerCase() !== name.toLowerCase()) { toast('❌', 'Username did not match. Nothing was deleted.'); return; }
+  tx({ type: 'ctlDeleteAccount', target: name });
+  closeProfile();
+}
+
 function renderAccts() {
   const q = $('acctSearch').value.trim().toLowerCase();
   const rows = accounts.filter(a => !q || a.username.toLowerCase().includes(q));
@@ -2109,25 +2192,149 @@ function renderAccts() {
     const row = el('div', 'acct-row');
     const nm = el('span', 'acct-name', a.username);
     if (a.role) nm.appendChild(el('span', 'acct-role ' + a.role, a.role === 'admin' ? 'MOD' : a.role.toUpperCase()));
+    if (a.banned) nm.appendChild(el('span', 'acct-role admin', 'BANNED'));
     row.appendChild(nm);
+    const btns = el('div', 'acct-btns');
+    const view = el('button', 'acct-btn', 'View');
+    view.onclick = () => openProfile(a.username);
+    btns.appendChild(view);
     if (a.role !== 'owner') {
-      const btns = el('div', 'acct-btns');
       for (const [role, label] of [['vip', 'VIP'], ['admin', 'Mod'], ['none', 'None']]) {
         const on = (a.role || 'none') === role;
         const b = el('button', 'acct-btn' + (on ? ' on' : ''), label);
         b.onclick = () => { if (!on) tx({ type: 'ctlSetRole', target: a.username, role }); };
         btns.appendChild(b);
       }
-      row.appendChild(btns);
+      const ban = el('button', 'acct-btn warn', a.banned ? 'Unban' : 'Ban');
+      ban.onclick = () => ownerBanAccount(a.username, !a.banned);
+      const del = el('button', 'acct-btn danger', 'Delete');
+      del.onclick = () => ownerDeleteAccount(a.username);
+      btns.append(ban, del);
     }
+    row.appendChild(btns);
     return row;
   }));
 }
+
+/* ---------- profile page (click your own name bottom left, or anyone's name) ---------- */
+const COLOR_NAMES = ['default', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
+function closeProfile() { $('profileModal').classList.remove('show'); }
+function openProfile(name) {
+  if (!name) return;
+  $('pfTitle').textContent = 'Profile';
+  $('pfBody').replaceChildren(el('div', 'empty', 'Loading...'));
+  $('profileModal').classList.add('show');
+  tx({ type: 'getProfile', name });
+}
+function pfSection(title) {
+  const sec = el('div', 'pf-section');
+  if (title) sec.appendChild(el('div', 'pf-title', title));
+  return sec;
+}
+function pfInput(type, placeholder, max) {
+  const i = el('input', 'form-input');
+  i.type = type; i.placeholder = placeholder; i.maxLength = max;
+  i.autocomplete = type === 'password' ? 'new-password' : 'off';
+  i.style.marginBottom = '8px';
+  return i;
+}
+function pfBtn(text, cls, fn) {
+  const b = el('button', 'btn ' + cls, text);
+  b.style.marginTop = '0';
+  b.onclick = fn;
+  return b;
+}
+
+function renderProfile(d) {
+  const out = [];
+  $('pfTitle').textContent = d.self ? 'Your profile' : 'Profile';
+
+  const head = el('div', 'pf-head');
+  head.appendChild(el('div', 'pf-avatar' + (d.color && d.color !== 'default' ? ' color-' + d.color : ''), d.name.charAt(0).toUpperCase()));
+  const info = el('div', 'pf-info');
+  const nm = el('div', 'pf-name', d.name);
+  if (d.role) nm.appendChild(el('span', 'acct-role ' + d.role, d.role === 'admin' ? 'MOD' : d.role.toUpperCase()));
+  if (d.banned) nm.appendChild(el('span', 'acct-role admin', 'BANNED'));
+  info.appendChild(nm);
+  info.appendChild(el('div', 'pf-sub', (d.account ? 'Account' : 'Guest') + ' · ' + (d.online ? 'Online' : 'Offline')));
+  if (d.created) info.appendChild(el('div', 'pf-sub', 'Member since ' + new Date(d.created).toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' })));
+  head.appendChild(info);
+  out.push(head);
+
+  const about = pfSection('About');
+  if (d.self && d.account) {
+    const ta = el('textarea', 'form-input');
+    ta.rows = 3; ta.maxLength = 200; ta.placeholder = 'Write something about yourself...'; ta.value = d.bio || '';
+    ta.style.resize = 'vertical'; ta.style.marginBottom = '8px';
+    about.append(ta, pfBtn('Save', 'btn-primary', () => tx({ type: 'setBio', bio: ta.value })));
+  } else {
+    about.appendChild(el('div', 'pf-bio', d.bio || (d.account ? 'No bio yet.' : "Guests don't have a profile page. Sign up to get one.")));
+  }
+  out.push(about);
+
+  if (d.self) {
+    const colors = pfSection('Profile color');
+    const grid = el('div', 'color-picker');
+    for (const c of COLOR_NAMES) {
+      const o = el('div', 'color-option color-' + c + (prefs.profileColor === c ? ' selected' : ''));
+      o.dataset.color = c;
+      o.onclick = () => { changePref(() => { prefs.profileColor = c; }); tx({ type: 'setProfile', color: c }); };
+      grid.appendChild(o);
+    }
+    colors.appendChild(grid);
+    out.push(colors);
+
+    if (d.account) {
+      const pw = pfSection('Change password');
+      const cur = pfInput('password', 'Current password', 128);
+      const nw = pfInput('password', 'New password (6+ characters)', 128);
+      pw.append(cur, nw, pfBtn('Change password', 'btn-primary', () => {
+        if (!cur.value || nw.value.length < 6) { toast('❌', 'Enter your current password and a new one (6+ characters)'); return; }
+        tx({ type: 'changePassword', password: cur.value, newPassword: nw.value });
+        cur.value = ''; nw.value = '';
+      }));
+      out.push(pw);
+
+      const del = pfSection('Delete account');
+      del.appendChild(el('div', 'pf-sub', 'This permanently deletes your account and your DMs. Your username becomes free for anyone to use.'));
+      const dp = pfInput('password', 'Enter your password to confirm', 128);
+      dp.style.marginTop = '8px';
+      del.append(dp, pfBtn('Delete my account', 'btn-danger', () => {
+        if (!dp.value) { toast('❌', 'Enter your password to confirm'); return; }
+        if (confirm('Delete your account permanently? This cannot be undone.')) tx({ type: 'deleteAccount', password: dp.value });
+      }));
+      out.push(del);
+    }
+  } else {
+    const acts = pfSection();
+    const row = el('div', 'pf-actions');
+    if (d.online) {
+      row.appendChild(pfBtn('Send DM request', 'btn-primary', () => { reqLink(d.name); closeProfile(); }));
+      const hid = hiddenNames.has(d.name.toLowerCase());
+      row.appendChild(pfBtn(hid ? 'Unblock' : 'Block', 'btn-danger', () => {
+        tx(hid ? { type: 'unhide', name: d.name } : { type: 'hide', target: d.name });
+        closeProfile();
+      }));
+    }
+    if (isOwner && d.account && d.role !== 'owner') {
+      row.appendChild(pfBtn(d.banned ? 'Unban account' : 'Ban account', 'btn-danger', () => ownerBanAccount(d.name, !d.banned)));
+      row.appendChild(pfBtn('Delete account', 'btn-danger', () => ownerDeleteAccount(d.name)));
+    }
+    if (row.children.length) { acts.appendChild(row); out.push(acts); }
+  }
+  $('pfBody').replaceChildren(...out);
+}
+
 $('acctSearch').addEventListener('input', renderAccts);
 $('acctRefresh').onclick = () => tx({ type: 'ctlAccounts' });
 
 document.querySelectorAll('.login-tab').forEach(t => { t.onclick = () => setLoginTab(t.dataset.mode); });
 $('acctPwd').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+$('myName').onclick = () => openProfile(me);
+$('myAvatar').onclick = () => openProfile(me);
+$('closeProfile').onclick = closeProfile;
+$('profileModal').addEventListener('click', e => { if (e.target === $('profileModal')) closeProfile(); });
 
 $('logoutBtn').onclick = () => {
   tx({ type: 'logout' });
