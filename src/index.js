@@ -418,6 +418,7 @@ export class Hub {
       case 'exitSpace': return this.onExitSpace(ws, data, user);
 
       case 'avOn': return this.onAvOn(ws, data, user);
+      case 'avIce': return this.onAvIce(ws);
       case 'avOff': return this.avOff(ws, user);
       case 'logout': return this.onLogout(user);
       case 'getProfile': return this.onGetProfile(ws, data, user);
@@ -1069,6 +1070,31 @@ export class Hub {
     this.broadcast({ type: 'avMembers', board, members: this.avMembers(board) });
   }
 
+  // Relay servers for audio. Without a TURN relay, people behind mobile or strict networks cannot hear each other.
+  // Optional: set TURN_KEY_ID (var) and TURN_API_TOKEN (secret) from Cloudflare Realtime > TURN.
+  async onAvIce(ws) {
+    const fallback = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
+    let iceServers = fallback;
+    const id = this.env.TURN_KEY_ID, token = this.env.TURN_API_TOKEN;
+    if (id && token) {
+      try {
+        if (!this.iceCache || this.iceCache.exp < Date.now()) {
+          const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${id}/credentials/generate-ice-servers`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ttl: 86400 })
+          });
+          if (r.ok) {
+            const j = await r.json();
+            if (Array.isArray(j.iceServers) && j.iceServers.length) this.iceCache = { servers: j.iceServers, exp: Date.now() + 6 * 3600 * 1000 };
+          }
+        }
+        if (this.iceCache) iceServers = this.iceCache.servers;
+      } catch { /* fall back to STUN only */ }
+    }
+    send(ws, { type: 'avIce', iceServers, relay: iceServers !== fallback });
+  }
+
   avOff(ws, user) {
     const board = user.av;
     if (!board) return;
@@ -1347,7 +1373,7 @@ export class Hub {
       await this.ensureSchema();
       acct = await this.env.DB.prepare('SELECT username, role, created, bio, banned FROM accounts WHERE username_lc = ?').bind(lc(name)).first();
     }
-    if (!acct && !online) { send(ws, { type: 'fault', message: 'User not found' }); return; }
+    if (!acct && !online) { send(ws, { type: 'profile', name, deleted: true }); return; }
     const username = acct ? acct.username : online.user.name;
     const out = {
       type: 'profile',
@@ -1468,6 +1494,13 @@ export default {
       return hub.fetch(request);
     }
 
-    return env.ASSETS.fetch(request);
+    const res = await env.ASSETS.fetch(request);
+    const out = new Response(res.body, res);
+    out.headers.set('X-Content-Type-Options', 'nosniff');
+    out.headers.set('X-Frame-Options', 'DENY');
+    out.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    out.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    out.headers.set('Permissions-Policy', 'microphone=(self), camera=(), geolocation=(), payment=()');
+    return out;
   }
 };
