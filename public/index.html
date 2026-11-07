@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>The Chet</title>
+<meta name="description" content="The Chet is a small community chat room with text channels, voice channels and private messages. Free accounts need only a username and password.">
+<meta name="robots" content="index,follow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>💀</text></svg>" id="favicon">
 <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 <style>
@@ -147,6 +150,9 @@ body.light-theme .me-name{color:#060607}
 .r-by.vip{color:#f47fff}
 .r-by.normal{color:#fff}
 .r-t{color:#72767d;font-size:12px}
+.r-link{color:#00a8fc;text-decoration:none;word-break:break-all}
+.r-link:hover{text-decoration:underline}
+body.light-theme .r-link{color:#0068d6}
 .r-txt{color:#dcddde;font-size:15px;line-height:1.4;word-wrap:break-word;white-space:pre-wrap}
 .row.grouped{margin-top:0;padding-top:0}
 .row.grouped .r-ico,.row.grouped .r-head{display:none}
@@ -452,6 +458,7 @@ body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 <button class="login-tab" data-mode="signup">Sign up</button>
 <button class="login-tab active" data-mode="login">Log in</button>
 </div>
+<div style="text-align:center;margin-top:14px;font-size:12px"><a href="/about.html" style="color:#96989d">About &amp; privacy</a></div>
 </div>
 </div>
 
@@ -472,7 +479,7 @@ body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 </div>
 
 <div class="toasts" id="toasts"></div>
-<div id="remoteAudio" style="display:none"></div>
+<div id="remoteAudio" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden" aria-hidden="true"></div>
 
 <div class="modal-overlay" id="helpModal">
 <div class="modal">
@@ -864,7 +871,15 @@ const EMOJIS = ['👍','👎','❤️','😂','😮','😢','🔥','🎉','👀'
 const WS_FALLBACK = 'wss://the-chet.app/s';
 const MAX_DATAURL_CHARS = 900000;            // images bigger than this are shrunk automatically
 const TTL_MS = 3 * 24 * 60 * 60 * 1000;      // the server deletes messages after 3 days
-const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+let RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+let iceWaiter = null;
+function loadIce() {
+  return new Promise(res => {
+    const t = setTimeout(() => { iceWaiter = null; res(); }, 3000);
+    iceWaiter = () => { clearTimeout(t); iceWaiter = null; res(); };
+    tx({ type: 'avIce' });
+  });
+}
 
 const RULES = [
   ['Be respectful', 'Treat everyone kindly. No harassment, bullying or personal attacks.'],
@@ -961,6 +976,30 @@ const LEET = { a: '[a@4]', e: '[e3]', i: '[i1!]', o: '[o0]', s: '[s$5]', l: '[l1
 const FLAGGED_RE = new RegExp(
   '(?<![\\w$@])(?:' + FLAGGED.map(w => [...w].map(c => LEET[c] || c).join('')).join('|') +
   ')(?:s|ed|er|ers|ing|in|y)?(?![\\w$@])', 'gi');
+const URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"']+/gi;
+function linkify(text) {
+  const out = [];
+  let last = 0, m;
+  URL_RE.lastIndex = 0;
+  while ((m = URL_RE.exec(text))) {
+    let url = m[0], trail = '';
+    const t = url.match(/[.,;:!?)\]}]+$/);
+    if (t) { trail = t[0]; url = url.slice(0, -trail.length); }
+    const href = /^www\./i.test(url) ? 'https://' + url : url;
+    let ok = false;
+    try { const u = new URL(href); ok = u.protocol === 'https:' || u.protocol === 'http:'; } catch { /* not a link */ }
+    if (!ok || !url) continue;
+    if (m.index > last) out.push(document.createTextNode(text.slice(last, m.index)));
+    const a = el('a', 'r-link', url);
+    a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer nofollow ugc';
+    a.onclick = e => e.stopPropagation();
+    out.push(a);
+    if (trail) out.push(document.createTextNode(trail));
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(document.createTextNode(text.slice(last)));
+  return out;
+}
 function cleanText(text) {
   return prefs.profanityFilter ? text.replace(FLAGGED_RE, m => '*'.repeat(m.length)) : text;
 }
@@ -1393,6 +1432,7 @@ function handle(d) {
     // audio
     avMembers: () => { avData[d.board] = d.members; updateAvUI(d.board); },
     avJoined: () => { if (d.board === curAv) d.peers.forEach(p => createPeer(p, true)); },
+    avIce: () => { if (Array.isArray(d.iceServers)) RTC_CONFIG = { iceServers: d.iceServers }; if (iceWaiter) iceWaiter(); },
     avOffer: () => handleAvOffer(d),
     avAnswer: () => handleAvAnswer(d),
     avCand: () => handleAvCandidate(d),
@@ -1673,7 +1713,7 @@ function draw(forceBottom) {
       body.appendChild(ref);
     }
 
-    if (m.body) body.appendChild(el('div', 'r-txt', cleanText(m.body)));
+    if (m.body) { const t = el('div', 'r-txt'); t.append(...linkify(cleanText(m.body))); body.appendChild(t); }
 
     if (m.media) {
       const img = el('img', 'r-media');
@@ -1729,7 +1769,7 @@ function draw(forceBottom) {
 
     if (window.matchMedia('(hover: none)').matches) {
       row.onclick = e => {
-        if (e.target.closest('.r-acts, .mark, .r-media, .picker, .r-by')) return;
+        if (e.target.closest('.r-acts, .mark, .r-media, .picker, .r-by, .r-link')) return;
         const was = row.classList.contains('tapped');
         document.querySelectorAll('.row.tapped').forEach(x => x.classList.remove('tapped'));
         if (!was) row.classList.add('tapped');
@@ -1847,6 +1887,7 @@ async function joinAv(b) {
       toast('❌', 'Could not access your microphone.');
       return;
     }
+    await loadIce();
     curAv = b;
     isMuted = false;
     tx({ type: 'avOn', board: b });
@@ -1892,13 +1933,25 @@ function createPeer(name, initiator) {
   const pc = new RTCPeerConnection(RTC_CONFIG);
   const audio = document.createElement('audio');
   audio.autoplay = true;
+  audio.playsInline = true;
   $('remoteAudio').appendChild(audio);
   const peer = { pc, audio, pending: [], remoteSet: false };
   peers[name] = peer;
 
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
   pc.onicecandidate = e => { if (e.candidate) tx({ type: 'avCand', to: name, candidate: e.candidate }); };
-  pc.ontrack = e => { audio.srcObject = e.streams[0]; };
+  pc.ontrack = e => {
+    audio.srcObject = e.streams[0];
+    const go = () => audio.play().catch(() => {});
+    go();
+    if (audio.paused) document.addEventListener('pointerdown', go, { once: true });
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed') {
+      toast('❌', `Voice connection to ${name} failed. Their network may block direct audio.`);
+      try { pc.restartIce(); } catch { /* ignore */ }
+    }
+  };
 
   if (initiator) {
     pc.createOffer()
@@ -2247,6 +2300,17 @@ function pfBtn(text, cls, fn) {
 
 function renderProfile(d) {
   const out = [];
+  if (d.deleted) {
+    $('pfTitle').textContent = 'Profile';
+    const head = el('div', 'pf-head');
+    head.appendChild(el('div', 'pf-avatar', '?'));
+    const info = el('div', 'pf-info');
+    info.appendChild(el('div', 'pf-name', 'Deleted account'));
+    info.appendChild(el('div', 'pf-sub', 'This account no longer exists (or it was a guest who has left).'));
+    head.appendChild(info);
+    $('pfBody').replaceChildren(head);
+    return;
+  }
   $('pfTitle').textContent = d.self ? 'Your profile' : 'Profile';
 
   const head = el('div', 'pf-head');
