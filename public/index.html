@@ -206,6 +206,19 @@ body.light-theme .r-link{color:#0068d6}
 @keyframes glow{0%,100%{text-shadow:0 0 20px rgba(88,101,242,.5),0 0 40px rgba(88,101,242,.3)}50%{text-shadow:0 0 30px rgba(88,101,242,.7),0 0 60px rgba(88,101,242,.5)}}
 #loginCard{width:320px;max-width:calc(100vw - 32px);background:#2f3136;border:1px solid #202225;border-radius:8px;padding:24px;color:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 #loginCard h2{margin-bottom:16px;font-size:20px}
+#rulesCard{width:420px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 140px);display:flex;flex-direction:column;background:#2f3136;border:1px solid #202225;border-radius:8px;padding:22px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+#rulesCard #rulesList{overflow-y:auto;flex:1 1 auto;min-height:0;padding-right:2px}
+#rulesCard .rule{padding:8px 10px;margin-bottom:6px;font-size:12.5px}
+#rulesCard .rules-actions,#rulesCard #landError,#rulesCard .land-links,#rulesCard .rules-intro,#rulesCard h2{flex:0 0 auto}
+#rulesCard h2{font-size:20px;margin-bottom:6px;text-align:center}
+#rulesCard .rules-intro{text-align:center}
+#landError{color:#ed4245;font-size:13px;min-height:16px;text-align:center;margin-top:8px}
+.land-links{text-align:center;margin-top:12px;font-size:13px;color:#96989d}
+.land-links a,.land-links button{color:#00a8fc;background:none;border:none;font-size:13px;cursor:pointer;padding:0;text-decoration:none}
+.guest-btns{display:none;gap:6px;flex:1;min-width:0}
+.guest-btns button{flex:1;padding:7px 4px;border:none;border-radius:6px;background:#5865f2;color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.guest-btns button.alt{background:#40444b}
+#needAcctModal .modal{max-width:340px}
 #usernameInput,#acctPwd{width:100%;padding:12px;border-radius:6px;border:none;background:#40444b;color:#fff;font-size:14px;transition:box-shadow .2s;margin-bottom:12px}
 #usernameInput:focus,#acctPwd:focus{outline:none;box-shadow:0 0 0 2px #5865f2}
 #loginBtn{width:100%;margin-top:0;padding:12px;border:none;border-radius:6px;background:#5865f2;color:#fff;cursor:pointer;font-weight:600;font-size:14px;transition:background .2s}
@@ -215,7 +228,6 @@ body.light-theme .r-link{color:#0068d6}
 .empty{text-align:center;color:#72767d;padding:12px;font-size:12px}
 .modal-overlay{position:fixed;inset:0;z-index:1500;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center}
 .modal-overlay.show{display:flex}
-#rulesModal{z-index:2100}
 .modal{width:520px;max-width:92vw;max-height:80vh;background:#2f3136;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.5)}
 .modal-header{padding:16px;background:#5865f2;color:#fff;display:flex;justify-content:space-between;align-items:center}
 .modal-title{font-size:18px;font-weight:700}
@@ -287,7 +299,7 @@ body.light-theme .r-link{color:#0068d6}
 .hide-btn{background:#4f545c}
 
 #particles{position:absolute;inset:0;width:100%;height:100%;z-index:0}
-.login-title,#loginCard{position:relative;z-index:1}
+.login-title,#loginCard,#rulesCard{position:relative;z-index:1}
 
 
 .mob-btn{display:none;width:40px;height:40px;flex-shrink:0;align-items:center;justify-content:center;background:none;border:none;color:#96989d;font-size:20px;border-radius:6px;cursor:pointer}
@@ -442,7 +454,15 @@ body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 <div id="loginOverlay">
 <canvas id="particles"></canvas>
 <div class="login-title">The Chet</div>
-<div id="loginCard">
+<div id="rulesCard">
+<h2>Server Rules</h2>
+<div class="rules-intro">Please read and agree to the rules to join the chat.</div>
+<div id="rulesList"></div>
+<div class="rules-actions"><button class="btn btn-success" id="acceptRules">Agree &amp; Join</button></div>
+<div id="landError"></div>
+<div class="land-links"><button type="button" id="landLogin">Log in</button> · <button type="button" id="landSignup">Sign up</button> · <a href="/about.html">About &amp; privacy</a></div>
+</div>
+<div id="loginCard" style="display:none">
 <h2>Welcome to The Chet</h2>
 <div id="loginHint" style="color:#96989d;font-size:12px;margin:-4px 0 12px;min-height:16px"></div>
 <input type="text" id="usernameInput" placeholder="Username" maxlength="30" autocomplete="username">
@@ -454,25 +474,24 @@ body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 <div id="loginError"></div>
 <div class="login-or">or</div>
 <div class="login-tabs">
-<button class="login-tab" data-mode="guest">Guest</button>
 <button class="login-tab" data-mode="signup">Sign up</button>
 <button class="login-tab active" data-mode="login">Log in</button>
 </div>
-<div style="text-align:center;margin-top:14px;font-size:12px"><a href="/about.html" style="color:#96989d">About &amp; privacy</a></div>
+<div class="land-links"><button type="button" id="loginBack">Back</button> · <a href="/about.html">About &amp; privacy</a></div>
 </div>
 </div>
 
-<div class="modal-overlay" id="rulesModal">
+<div class="modal-overlay" id="needAcctModal">
 <div class="modal">
 <div class="modal-header">
-<div class="modal-title">📜 Server Rules</div>
+<div class="modal-title">Account needed</div>
+<button class="modal-close" id="closeNeedAcct">×</button>
 </div>
 <div class="modal-body">
-<div class="rules-intro">Please read and agree to the rules before joining.</div>
-<div id="rulesList"></div>
+<div class="rules-intro">Create an account or log in to send messages. It only needs a username and password.</div>
 <div class="rules-actions">
-<button class="btn btn-danger" id="declineRules">Cancel</button>
-<button class="btn btn-success" id="acceptRules">I Agree &amp; Join</button>
+<button class="btn btn-primary" id="needLogin">Log in</button>
+<button class="btn btn-success" id="needSignup">Sign up</button>
 </div>
 </div>
 </div>
@@ -814,6 +833,7 @@ gaming
 <div class="dot" id="notifDot"></div>
 </div>
 <div class="me-name" id="myName">Member</div>
+<div class="guest-btns" id="guestBtns"><button type="button" id="gbLogin">Log in</button><button type="button" class="alt" id="gbSignup">Sign up</button></div>
 <button class="settings-btn" id="ctlBtn" title="Admin Panel" style="display:none">🛡️</button>
 <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
 <div class="conn" id="connStatus"></div>
@@ -1198,39 +1218,63 @@ function connect() {
 function setLoginTab(mode) {
   loginTab = mode;
   document.querySelectorAll('.login-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-  $('acctField').style.display = mode === 'guest' ? 'none' : 'block';
+  $('acctField').style.display = 'block';
   $('acctPwd').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
-  $('loginBtn').textContent = mode === 'guest' ? 'Join as guest' : mode === 'login' ? 'Log in' : 'Create account';
-  $('loginHint').textContent = mode === 'guest' ? "No account needed. You can't use a username that belongs to an account."
-    : mode === 'login' ? 'Log in to keep your username, DMs and roles on any device.'
+  $('loginBtn').textContent = mode === 'login' ? 'Log in' : 'Create account';
+  $('loginHint').textContent = mode === 'login' ? 'Log in to send messages and keep your username, DMs and roles on any device.'
     : 'Pick a username (3-20 letters, numbers, _ . -) and a password. No email needed.';
   $('loginError').textContent = '';
 }
 
-function login() {
-  $('loginError').textContent = '';
-  if (loginTab !== 'guest') {
-    if (!$('usernameInput').value.trim()) { $('loginError').textContent = 'Enter a username'; return; }
-    const pw = $('acctPwd').value;
-    if (!pw) { $('loginError').textContent = 'Enter a password'; return; }
-    if (loginTab === 'signup' && pw.length < 6) { $('loginError').textContent = 'Password must be at least 6 characters'; return; }
-  }
-  $('rulesModal').classList.add('show');
+function showCard(which) {
+  $('rulesCard').style.display = which === 'rules' ? '' : 'none';
+  $('loginCard').style.display = which === 'login' ? '' : 'none';
 }
 
-function cancelRules() { $('rulesModal').classList.remove('show'); }
+function dropSocket() {
+  if (curAv) cleanupAv();
+  if (ws) { const old = ws; ws = null; connected = false; try { old.close(); } catch { /* ignore */ } }
+}
 
-function acceptRules() {
-  $('rulesModal').classList.remove('show');
-  me = $('usernameInput').value.trim() || 'Guest';
+function login() {
+  $('loginError').textContent = '';
+  if (!$('usernameInput').value.trim()) { $('loginError').textContent = 'Enter a username'; return; }
+  const pw = $('acctPwd').value;
+  if (!pw) { $('loginError').textContent = 'Enter a password'; return; }
+  if (loginTab === 'signup' && pw.length < 6) { $('loginError').textContent = 'Password must be at least 6 characters'; return; }
+  me = $('usernameInput').value.trim();
   authMode = loginTab;
-  acctPassword = loginTab === 'guest' ? '' : $('acctPwd').value;
+  acctPassword = pw;
   noReconnect = false;
   $('loginError').textContent = 'Connecting...';
   setLoginBusy(true);
+  dropSocket();
   requestAlertPerm();
   connect();
 }
+
+// First screen: agree to the rules and join as a guest (read only).
+function acceptRules() {
+  me = 'Guest';
+  authMode = 'guest';
+  acctPassword = '';
+  noReconnect = false;
+  $('landError').textContent = 'Connecting...';
+  $('acceptRules').disabled = true;
+  connect();
+}
+
+function openAuth(mode) {
+  closeProfile();
+  $('needAcctModal').classList.remove('show');
+  closeDrawers();
+  setLoginTab(mode);
+  showCard('login');
+  $('loginOverlay').style.display = 'flex';
+  startParticles();
+}
+
+function needAccount() { $('needAcctModal').classList.add('show'); }
 
 function failLogin(message) {
   if (authMode === 'resume') { token = null; store.set('token', ''); authMode = loginTab; }
@@ -1238,8 +1282,11 @@ function failLogin(message) {
   noReconnect = true;
   joinedOnce = false;
   setLoginBusy(false);
+  $('acceptRules').disabled = false;
   $('loginOverlay').style.display = 'flex';
-  $('loginError').textContent = message;
+  if (loginTab !== 'guest' && authMode !== 'guest' && authMode !== 'resume') { showCard('login'); $('loginError').textContent = message; }
+  else if ($('loginCard').style.display !== 'none') $('loginError').textContent = message;
+  else $('landError').textContent = message;
   startParticles();
 }
 
@@ -1270,7 +1317,12 @@ function handle(d) {
       $('ctAccount').style.display = isOwner ? '' : 'none';
       $('ctlBtn').style.display = isStaff() ? 'flex' : 'none';
       $('myName').textContent = me;
-      $('myInitial').textContent = me.charAt(0).toUpperCase();
+      $('myInitial').textContent = isAccount ? me.charAt(0).toUpperCase() : '?';
+      $('myName').style.display = isAccount ? '' : 'none';
+      $('guestBtns').style.display = isAccount ? 'none' : 'flex';
+      $('fld').placeholder = isAccount ? 'Message #' + curBoard + ' (try /help)' : 'Log in or sign up to send messages';
+      $('acceptRules').disabled = false;
+      $('landError').textContent = '';
       $('loginOverlay').style.display = 'none';
       $('loginError').textContent = '';
       setLoginBusy(false);
@@ -1285,6 +1337,7 @@ function handle(d) {
       if (pendingInvite) { requestSpace(pendingInvite, false); pendingInvite = null; }
     },
     denied: () => failLogin(d.message || 'Could not join'),
+    needAccount: () => needAccount(),
     role: () => {
       isOwner = !!d.isOwner; isAdmin = !!d.isAdmin; isVIP = !!d.isVIP;
       $('ownerTab').style.display = isOwner ? 'block' : 'none';
@@ -1656,7 +1709,7 @@ function openBoard(b) {
   $('curBoard').classList.remove('private');
   $('curBoard').classList.toggle('space', sp);
   $('spTools').style.display = sp ? 'flex' : 'none';
-  $('fld').placeholder = sp ? `Message room ${b.slice(6)}` : `Message #${b} (try /help)`;
+  $('fld').placeholder = !isAccount ? 'Log in or sign up to send messages' : sp ? `Message room ${b.slice(6)}` : `Message #${b} (try /help)`;
   document.querySelectorAll('.item').forEach(c => c.classList.toggle('active', c.dataset.board === b));
   if (!feeds[b]) tx({ type: 'fetchLog', board: b }); else draw(true);
   unreadBoards[b] = 0;
@@ -1671,7 +1724,7 @@ function openLink(id, name) {
   viewType = 'link'; curLink = id;
   $('curBoard').textContent = name; $('curBoard').classList.add('private'); $('curBoard').classList.remove('space');
   $('spTools').style.display = 'none';
-  $('fld').placeholder = `Message @${name}`;
+  $('fld').placeholder = isAccount ? `Message @${name}` : 'Log in or sign up to send messages';
   document.querySelectorAll('.item').forEach(c => c.classList.toggle('active', c.dataset.link === id));
   if (!linkFeeds[id]) tx({ type: 'fetchNoteLog', thread: id }); else draw(true);
   unreadLinks[id] = 0; updateLinkBadge(id); clearMark();
@@ -1806,6 +1859,7 @@ function showPicker(btn, id) {
 /* ---------- sending ---------- */
 let activityTimer = null, activitySent = false;
 function sendActivity(on) {
+  if (!isAccount) return;
   if (on === activitySent) return;
   activitySent = on;
   if (!connected) return;
@@ -1835,6 +1889,7 @@ function submitEntry() {
   if (!body && !selectedMedia) return;
   if (body === '/help' && !selectedMedia) { $('fld').value = ''; showHelp(); return; }
   if (!connected) { toast('⚠️', 'Not connected yet'); return; }
+  if (!isAccount) { needAccount(); return; }
 
   const payload = { body, media: selectedMedia || undefined, ref: refTo ? refTo.id : undefined };
   if (viewType === 'link') {
@@ -2027,9 +2082,6 @@ $('rulesList').replaceChildren(...RULES.map(([title, text], i) => {
   return box;
 }));
 $('acceptRules').onclick = acceptRules;
-$('declineRules').onclick = cancelRules;
-$('rulesModal').addEventListener('click', e => { if (e.target === $('rulesModal')) cancelRules(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('rulesModal').classList.contains('show')) cancelRules(); });
 
 $('goBtn').onclick = submitEntry;
 $('fld').addEventListener('keydown', e => {
@@ -2396,7 +2448,15 @@ document.querySelectorAll('.login-tab').forEach(t => { t.onclick = () => setLogi
 $('acctPwd').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 
 $('myName').onclick = () => openProfile(me);
-$('myAvatar').onclick = () => openProfile(me);
+$('myAvatar').onclick = () => { if (isAccount) openProfile(me); else openAuth('login'); };
+$('gbLogin').onclick = () => openAuth('login');
+$('gbSignup').onclick = () => openAuth('signup');
+$('needLogin').onclick = () => openAuth('login');
+$('needSignup').onclick = () => openAuth('signup');
+$('closeNeedAcct').onclick = () => $('needAcctModal').classList.remove('show');
+$('landLogin').onclick = () => openAuth('login');
+$('landSignup').onclick = () => openAuth('signup');
+$('loginBack').onclick = () => { if (joinedOnce && connected) { $('loginOverlay').style.display = 'none'; } else { showCard('rules'); } };
 $('closeProfile').onclick = closeProfile;
 $('profileModal').addEventListener('click', e => { if (e.target === $('profileModal')) closeProfile(); });
 
@@ -2423,6 +2483,7 @@ window.addEventListener('load', () => {
 
   setLoginTab('login');
   if (token && store.get('username')) {
+    showCard('login');
     me = store.get('username'); authMode = 'resume'; noReconnect = false;
     $('loginError').textContent = 'Connecting...';
     setLoginBusy(true);
@@ -2432,11 +2493,6 @@ window.addEventListener('load', () => {
   const params = new URLSearchParams(location.search);
   const invite = normCode(params.get('s'));
   if (invite.length >= 3) pendingInvite = invite;
-  if (params.get('guest') === 'true') {
-    setLoginTab('guest');
-    $('usernameInput').value = 'Guest';
-    login();
-  }
 });
 window.addEventListener('beforeunload', () => { if (me) store.set('username', me); });
 </script>
