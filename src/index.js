@@ -400,6 +400,12 @@ export class Hub {
 
     if (data.type.startsWith('ctl') && !isStaff(user)) return;
 
+    // Guests can read but not post. Posting needs an account.
+    if (!user.acct && ['entry', 'note', 'mark', 'activity'].includes(data.type)) {
+      if (data.type !== 'activity') send(ws, { type: 'needAccount', message: 'Create an account or log in to send messages' });
+      return;
+    }
+
     switch (data.type) {
       case 'entry': return this.onEntry(ws, data, user);
       case 'note': return this.onNote(ws, data, user);
