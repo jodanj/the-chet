@@ -2,8 +2,8 @@
  * Hub - Cloudflare Worker + Durable Object realtime server.
  *
  * Accounts live in a D1 (SQLite) database bound as DB (see wrangler.jsonc). The tables are
- * created automatically on first use. Guests can join without an account, but cannot use a
- * username that belongs to an account.
+ * created automatically on first use. Guests can join without an account (and can chat), but
+ * cannot use a username that belongs to an account.
  *
  * Roles are stored on the account (accounts.role = 'owner', 'admin' or 'vip'). To make yourself
  * an owner, change your row in the database, for example:
@@ -11,7 +11,8 @@
  *     "UPDATE accounts SET role = 'owner' WHERE username_lc = 'yourname'"
  * Owners can then give other accounts VIP or Mod (admin) from the Owner tab of the admin panel.
  *
- * Messages are deleted automatically after 3 days.
+ * Retention: channel and room messages are deleted after 7 days, private chats (DMs) after 3 days.
+ * If storage ever runs out, the oldest messages are deleted to make room for new ones.
  *
  * Rooms: any channel named "space:<code>" is private. Only sockets that
  * have entered that code can read it, post in it, or receive its events.
@@ -31,8 +32,10 @@ const MAX_TEXT = 2000;
 const MAX_MEDIA_CHARS = 1000000;   // the page shrinks big pictures to fit this
 const MAX_FRAME_CHARS = 1040000;   // WebSocket frames stay just under 1 MiB
 
-const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;   // messages are deleted after 3 days
-const PURGE_EVERY_MS = 60 * 60 * 1000;        // ...checked once an hour
+const BOARD_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;   // channels and rooms: deleted after 7 days
+const LINK_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;    // private chats (DMs): deleted after 3 days
+const PURGE_EVERY_MS = 60 * 60 * 1000;              // ...checked once an hour
+const EVICT_BATCH = 200;                            // how many oldest messages to drop when storage is full
 
 const PBKDF2_ITERS = 100000;                  // the most Workers allows
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -200,15 +203,18 @@ export class Hub {
     return this.lastTs;
   }
 
-  // ----- 3-day cleanup -----
+  // ----- cleanup: 7 days for channels/rooms, 3 days for DMs -----
 
   async purgeOld() {
-    const cutoff = Date.now() - MAX_AGE_MS;
-    for (const list of Object.values(this.boards)) while (list.length && list[0].ts < cutoff) list.shift();
-    for (const list of this.links.values()) while (list.length && list[0].ts < cutoff) list.shift();
+    const now = Date.now();
+    const boardCutoff = now - BOARD_MAX_AGE_MS;
+    const linkCutoff = now - LINK_MAX_AGE_MS;
+
+    for (const list of Object.values(this.boards)) while (list.length && list[0].ts < boardCutoff) list.shift();
+    for (const list of this.links.values()) while (list.length && list[0].ts < linkCutoff) list.shift();
 
     const stale = [];
-    for (const prefix of ['b:', 't:']) {
+    for (const [prefix, cutoff] of [['b:', boardCutoff], ['t:', linkCutoff]]) {
       for (const [key, m] of await this.ctx.storage.list({ prefix })) {
         if (m && m.ts < cutoff) stale.push(key);
       }
@@ -220,6 +226,38 @@ export class Hub {
   async alarm() {
     try { await this.purgeOld(); } catch (err) { console.error('purge failed:', err); }
     await this.ctx.storage.setAlarm(Date.now() + PURGE_EVERY_MS);
+  }
+
+  // ----- storage writes that make room by deleting the oldest messages -----
+
+  store(key, value) {
+    bg(this.putWithEvict(key, value));
+  }
+
+  async putWithEvict(key, value) {
+    try {
+      await this.ctx.storage.put(key, value);
+    } catch (err) {
+      console.error('write failed, deleting the oldest messages to make room:', err);
+      await this.evictOldest(EVICT_BATCH);
+      await this.ctx.storage.put(key, value);
+    }
+  }
+
+  // Deletes the oldest messages across every channel, room and DM.
+  async evictOldest(count) {
+    const all = [];
+    for (const list of Object.values(this.boards)) for (const m of list) all.push({ m, list, key: bKey(m) });
+    for (const list of this.links.values()) for (const m of list) all.push({ m, list, key: tKey(m) });
+    all.sort((a, b) => a.m.ts - b.m.ts);
+
+    const victims = all.slice(0, count);
+    for (const v of victims) {
+      const i = v.list.indexOf(v.m);
+      if (i !== -1) v.list.splice(i, 1);
+    }
+    const keys = victims.map((v) => v.key);
+    for (let i = 0; i < keys.length; i += 128) await this.ctx.storage.delete(keys.slice(i, i + 128));
   }
 
   // ----- board / space helpers -----
@@ -399,12 +437,6 @@ export class Hub {
     if (!user.name) return;
 
     if (data.type.startsWith('ctl') && !isStaff(user)) return;
-
-    // Guests can read but not post. Posting needs an account.
-    if (!user.acct && ['entry', 'note', 'mark', 'activity'].includes(data.type)) {
-      if (data.type !== 'activity') send(ws, { type: 'needAccount', message: 'Create an account or log in to send messages' });
-      return;
-    }
 
     switch (data.type) {
       case 'entry': return this.onEntry(ws, data, user);
@@ -834,7 +866,7 @@ export class Hub {
     const list = this.boardList(data.board, true);
     if (!list) return;
     list.push(item);
-    bg(this.ctx.storage.put(bKey(item), item));
+    this.store(bKey(item), item);
     while (list.length > MAX_BOARD_LOG) {
       bg(this.ctx.storage.delete(bKey(list.shift())));
     }
@@ -868,7 +900,7 @@ export class Hub {
     if (!this.links.has(data.thread)) this.links.set(data.thread, []);
     const list = this.links.get(data.thread);
     list.push(item);
-    bg(this.ctx.storage.put(tKey(item), item));
+    this.store(tKey(item), item);
     while (list.length > MAX_LINK_LOG) {
       bg(this.ctx.storage.delete(tKey(list.shift())));
     }
@@ -931,7 +963,7 @@ export class Hub {
     if (who.length) item.marks[data.emoji] = who;
     else delete item.marks[data.emoji];
 
-    bg(this.ctx.storage.put(data.priv ? tKey(item) : bKey(item), item));
+    this.store(data.priv ? tKey(item) : bKey(item), item);
 
     const update = {
       type: 'markUpdate',
