@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>The Chet</title>
-<meta name="description" content="The Chet is a small community project. Free accounts need only a username and password.">
+<meta name="description" content="The Chet is a small community chat room with text channels, voice channels and private messages. Pick a username and jump in.">
 <meta name="robots" content="index,follow">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>💀</text></svg>" id="favicon">
@@ -209,7 +209,8 @@ body.light-theme .r-link{color:#0068d6}
 #rulesCard{width:420px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 140px);display:flex;flex-direction:column;background:#2f3136;border:1px solid #202225;border-radius:8px;padding:22px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 #rulesCard #rulesList{overflow-y:auto;flex:1 1 auto;min-height:0;padding-right:2px}
 #rulesCard .rule{padding:8px 10px;margin-bottom:6px;font-size:12.5px}
-#rulesCard .rules-actions,#rulesCard #landError,#rulesCard .land-links,#rulesCard .rules-intro,#rulesCard h2{flex:0 0 auto}
+#rulesCard .rules-actions,#rulesCard #landError,#rulesCard .land-links,#rulesCard .rules-intro,#rulesCard h2,#rulesCard #guestNameInput{flex:0 0 auto}
+#rulesCard #guestNameInput{margin-top:12px;margin-bottom:0}
 #rulesCard h2{font-size:20px;margin-bottom:6px;text-align:center}
 #rulesCard .rules-intro{text-align:center}
 #landError{color:#ed4245;font-size:13px;min-height:16px;text-align:center;margin-top:8px}
@@ -219,8 +220,8 @@ body.light-theme .r-link{color:#0068d6}
 .guest-btns button{flex:1;padding:7px 4px;border:none;border-radius:6px;background:#5865f2;color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
 .guest-btns button.alt{background:#40444b}
 #needAcctModal .modal{max-width:340px}
-#usernameInput,#acctPwd{width:100%;padding:12px;border-radius:6px;border:none;background:#40444b;color:#fff;font-size:14px;transition:box-shadow .2s;margin-bottom:12px}
-#usernameInput:focus,#acctPwd:focus{outline:none;box-shadow:0 0 0 2px #5865f2}
+#usernameInput,#guestNameInput,#acctPwd{width:100%;padding:12px;border-radius:6px;border:none;background:#40444b;color:#fff;font-size:14px;transition:box-shadow .2s;margin-bottom:12px}
+#usernameInput:focus,#guestNameInput:focus,#acctPwd:focus{outline:none;box-shadow:0 0 0 2px #5865f2}
 #loginBtn{width:100%;margin-top:0;padding:12px;border:none;border-radius:6px;background:#5865f2;color:#fff;cursor:pointer;font-weight:600;font-size:14px;transition:background .2s}
 #loginBtn:disabled{opacity:.6;cursor:wait}
 .alt-login{margin-top:16px;color:#5865f2;font-size:13px;cursor:pointer;transition:all .2s;text-decoration:underline;text-underline-offset:2px}
@@ -429,7 +430,7 @@ body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 
   .compose{padding:0 8px calc(8px + env(safe-area-inset-bottom))}
   .box{padding:8px}
-  .fld,#usernameInput,#acctPwd,.sp-in,.form-input,.form-select{font-size:16px}
+  .fld,#usernameInput,#guestNameInput,#acctPwd,.sp-in,.form-input,.form-select{font-size:16px}
 
   .item,.av-item{padding:12px}
   .mem{padding:10px 12px}
@@ -456,11 +457,12 @@ body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 <div class="login-title">The Chet</div>
 <div id="rulesCard">
 <h2>Server Rules</h2>
-<div class="rules-intro">Please read and agree to the rules to join the chat.</div>
+<div class="rules-intro">Please read and agree to the rules, pick a username, and jump in.</div>
 <div id="rulesList"></div>
+<input type="text" id="guestNameInput" placeholder="Choose a username" maxlength="30" autocomplete="username">
 <div class="rules-actions"><button class="btn btn-success" id="acceptRules">Agree &amp; Join</button></div>
 <div id="landError"></div>
-<div class="land-links"><button type="button" id="landLogin">Log in</button> · <button type="button" id="landSignup">Sign up</button> · <a href="/about.html">About &amp; privacy</a></div>
+<div class="land-links"><button type="button" id="landLogin">Log in</button> · <button type="button" id="landSignup">Sign up</button></div>
 </div>
 <div id="loginCard" style="display:none">
 <h2>Welcome to The Chet</h2>
@@ -477,7 +479,7 @@ body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 <button class="login-tab" data-mode="signup">Sign up</button>
 <button class="login-tab active" data-mode="login">Log in</button>
 </div>
-<div class="land-links"><button type="button" id="loginBack">Back</button> · <a href="/about.html">About &amp; privacy</a></div>
+<div class="land-links"><button type="button" id="loginBack">Back</button></div>
 </div>
 </div>
 
@@ -488,7 +490,7 @@ body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 <button class="modal-close" id="closeNeedAcct">×</button>
 </div>
 <div class="modal-body">
-<div class="rules-intro">Create an account or log in to send messages. It only needs a username and password.</div>
+<div class="rules-intro">Create an account or log in to use this feature. It only needs a username and password.</div>
 <div class="rules-actions">
 <button class="btn btn-primary" id="needLogin">Log in</button>
 <button class="btn btn-success" id="needSignup">Sign up</button>
@@ -573,7 +575,7 @@ body.light-theme .pf-name{color:#060607}body.light-theme .pf-bio{color:#2e3338}
 <div class="settings-option">
 <div>
 <div class="settings-option-label" id="acctLabel">Guest</div>
-<div class="settings-option-desc">Tap your name (bottom left) to open your profile. Messages are deleted after 3 days.</div>
+<div class="settings-option-desc">Tap your name (bottom left) to open your profile. Channel messages are deleted after 7 days, DMs after 3 days.</div>
 </div>
 <button class="toast-btn toast-decline" id="logoutBtn" style="flex:none;padding:6px 12px">Log out</button>
 </div>
@@ -890,7 +892,8 @@ gaming
 const EMOJIS = ['👍','👎','❤️','😂','😮','😢','🔥','🎉','👀','💯'];
 const WS_FALLBACK = 'wss://the-chet.app/s';
 const MAX_DATAURL_CHARS = 900000;            // images bigger than this are shrunk automatically
-const TTL_MS = 3 * 24 * 60 * 60 * 1000;      // the server deletes messages after 3 days
+const BOARD_TTL_MS = 7 * 24 * 60 * 60 * 1000; // channel and room messages are deleted after 7 days
+const LINK_TTL_MS = 3 * 24 * 60 * 60 * 1000;  // DMs are deleted after 3 days
 let RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 let iceWaiter = null;
 function loadIce() {
@@ -1221,7 +1224,7 @@ function setLoginTab(mode) {
   $('acctField').style.display = 'block';
   $('acctPwd').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
   $('loginBtn').textContent = mode === 'login' ? 'Log in' : 'Create account';
-  $('loginHint').textContent = mode === 'login' ? 'Log in to send messages and keep your username, DMs and roles on any device.'
+  $('loginHint').textContent = mode === 'login' ? 'Log in to keep your username, DMs and roles on any device.'
     : 'Pick a username (3-20 letters, numbers, _ . -) and a password. No email needed.';
   $('loginError').textContent = '';
 }
@@ -1253,14 +1256,15 @@ function login() {
   connect();
 }
 
-// First screen: agree to the rules and join as a guest (read only).
+// First screen: type a username, agree to the rules and join as a guest.
 function acceptRules() {
-  me = 'Guest';
+  me = $('guestNameInput').value.trim() || 'Guest';
   authMode = 'guest';
   acctPassword = '';
   noReconnect = false;
   $('landError').textContent = 'Connecting...';
   $('acceptRules').disabled = true;
+  dropSocket();
   connect();
 }
 
@@ -1317,10 +1321,10 @@ function handle(d) {
       $('ctAccount').style.display = isOwner ? '' : 'none';
       $('ctlBtn').style.display = isStaff() ? 'flex' : 'none';
       $('myName').textContent = me;
-      $('myInitial').textContent = isAccount ? me.charAt(0).toUpperCase() : '?';
-      $('myName').style.display = isAccount ? '' : 'none';
+      $('myInitial').textContent = me.charAt(0).toUpperCase();
+      $('myName').style.display = '';
       $('guestBtns').style.display = isAccount ? 'none' : 'flex';
-      $('fld').placeholder = isAccount ? 'Message #' + curBoard + ' (try /help)' : 'Log in or sign up to send messages';
+      $('fld').placeholder = isSpace(curBoard) && viewType === 'board' ? 'Message room ' + curBoard.slice(6) : 'Message #' + curBoard + ' (try /help)';
       $('acceptRules').disabled = false;
       $('landError').textContent = '';
       $('loginOverlay').style.display = 'none';
@@ -1709,7 +1713,7 @@ function openBoard(b) {
   $('curBoard').classList.remove('private');
   $('curBoard').classList.toggle('space', sp);
   $('spTools').style.display = sp ? 'flex' : 'none';
-  $('fld').placeholder = !isAccount ? 'Log in or sign up to send messages' : sp ? `Message room ${b.slice(6)}` : `Message #${b} (try /help)`;
+  $('fld').placeholder = sp ? `Message room ${b.slice(6)}` : `Message #${b} (try /help)`;
   document.querySelectorAll('.item').forEach(c => c.classList.toggle('active', c.dataset.board === b));
   if (!feeds[b]) tx({ type: 'fetchLog', board: b }); else draw(true);
   unreadBoards[b] = 0;
@@ -1724,7 +1728,7 @@ function openLink(id, name) {
   viewType = 'link'; curLink = id;
   $('curBoard').textContent = name; $('curBoard').classList.add('private'); $('curBoard').classList.remove('space');
   $('spTools').style.display = 'none';
-  $('fld').placeholder = isAccount ? `Message @${name}` : 'Log in or sign up to send messages';
+  $('fld').placeholder = `Message @${name}`;
   document.querySelectorAll('.item').forEach(c => c.classList.toggle('active', c.dataset.link === id));
   if (!linkFeeds[id]) tx({ type: 'fetchNoteLog', thread: id }); else draw(true);
   unreadLinks[id] = 0; updateLinkBadge(id); clearMark();
@@ -1733,7 +1737,7 @@ function openLink(id, name) {
 /* ---------- rendering ---------- */
 function draw(forceBottom) {
   const area = $('feedArea');
-  const cutoff = Date.now() - TTL_MS;
+  const cutoff = Date.now() - (viewType === 'link' ? LINK_TTL_MS : BOARD_TTL_MS);
   const list = (viewType === 'link' ? (linkFeeds[curLink] || []) : (feeds[curBoard] || [])).filter(m => m.ts > cutoff);
   const nearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
   const oldTop = area.scrollTop;
@@ -1859,7 +1863,6 @@ function showPicker(btn, id) {
 /* ---------- sending ---------- */
 let activityTimer = null, activitySent = false;
 function sendActivity(on) {
-  if (!isAccount) return;
   if (on === activitySent) return;
   activitySent = on;
   if (!connected) return;
@@ -1889,7 +1892,6 @@ function submitEntry() {
   if (!body && !selectedMedia) return;
   if (body === '/help' && !selectedMedia) { $('fld').value = ''; showHelp(); return; }
   if (!connected) { toast('⚠️', 'Not connected yet'); return; }
-  if (!isAccount) { needAccount(); return; }
 
   const payload = { body, media: selectedMedia || undefined, ref: refTo ? refTo.id : undefined };
   if (viewType === 'link') {
@@ -2082,6 +2084,7 @@ $('rulesList').replaceChildren(...RULES.map(([title, text], i) => {
   return box;
 }));
 $('acceptRules').onclick = acceptRules;
+$('guestNameInput').addEventListener('keydown', e => { if (e.key === 'Enter') acceptRules(); });
 
 $('goBtn').onclick = submitEntry;
 $('fld').addEventListener('keydown', e => {
